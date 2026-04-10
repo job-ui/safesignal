@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0f1e">
+<title>SafeSignal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f1e;
+    --surface: #111827;
+    --surface2: #1a2438;
+    --border: #1e2d45;
+    --accent: #3fffb0;
+    --accent2: #ff6b6b;
+    --accent3: #ffd166;
+    --text: #e8edf5;
+    --muted: #5a7090;
+    --safe: #3fffb0;
+    --warn: #ffd166;
+    --danger: #ff6b6b;
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ---- SCREENS ---- */
+  .screen { display: none; min-height: 100vh; flex-direction: column; }
+  .screen.active { display: flex; }
+
+  /* ---- SPLASH ---- */
+  #splash {
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at 30% 40%, #0d2240 0%, var(--bg) 60%);
+    position: relative;
+    overflow: hidden;
+  }
+  #splash::before {
+    content: '';
+    position: absolute;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    border: 1px solid rgba(63,255,176,0.07);
+    top: 50%; left: 50%; transform: translate(-50%,-50%);
+    animation: pulse-ring 3s ease-in-out infinite;
+  }
+  #splash::after {
+    content: '';
+    position: absolute;
+    width: 400px; height: 400px;
+    border-radius: 50%;
+    border: 1px solid rgba(63,255,176,0.12);
+    top: 50%; left: 50%; transform: translate(-50%,-50%);
+    animation: pulse-ring 3s ease-in-out infinite 0.5s;
+  }
+  @keyframes pulse-ring {
+    0%,100% { transform: translate(-50%,-50%) scale(1); opacity: 0.5; }
+    50% { transform: translate(-50%,-50%) scale(1.08); opacity: 1; }
+  }
+  .splash-inner { text-align: center; z-index: 1; padding: 32px; }
+  .logo-pulse {
+    width: 80px; height: 80px;
+    background: radial-gradient(circle, rgba(63,255,176,0.2) 0%, transparent 70%);
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 28px;
+    animation: glow 2s ease-in-out infinite;
+    position: relative;
+  }
+  .logo-pulse::after {
+    content: '';
+    position: absolute;
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    border: 1px solid var(--accent);
+    animation: ping 2s ease-out infinite;
+  }
+  @keyframes ping { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(2); opacity: 0; } }
+  @keyframes glow { 0%,100% { box-shadow: 0 0 20px rgba(63,255,176,0.3); } 50% { box-shadow: 0 0 40px rgba(63,255,176,0.6); } }
+  .logo-dot { width: 24px; height: 24px; background: var(--accent); border-radius: 50%; }
+  .app-name {
+    font-family: 'Fraunces', serif;
+    font-size: 42px;
+    font-weight: 300;
+    letter-spacing: -1px;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .app-name span { color: var(--accent); }
+  .app-tagline { color: var(--muted); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 48px; }
+  .role-cards { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 340px; }
+  .role-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .role-card:hover, .role-card:active { border-color: var(--accent); background: var(--surface2); transform: translateY(-1px); }
+  .role-icon { font-size: 28px; }
+  .role-title { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+  .role-desc { font-size: 11px; color: var(--muted); }
+
+  /* ---- HEADER ---- */
+  .header {
+    padding: 16px 20px 12px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .header-title { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; }
+  .header-title span { color: var(--accent); }
+  .header-back { background: none; border: 1px solid var(--border); color: var(--muted); padding: 6px 14px; border-radius: 8px; font-family: 'DM Mono', monospace; font-size: 12px; cursor: pointer; }
+  .header-back:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-icon { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 20px; padding: 4px 8px; }
+
+  /* ---- MONITOR DASHBOARD ---- */
+  .scroll-body { flex: 1; overflow-y: auto; padding: 20px; }
+  .section-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+
+  .summary-bar {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px; margin-bottom: 24px;
+  }
+  .summary-tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 12px;
+    text-align: center;
+  }
+  .summary-num { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 600; }
+  .summary-num.safe { color: var(--safe); }
+  .summary-num.warn { color: var(--warn); }
+  .summary-num.danger { color: var(--danger); }
+  .summary-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  .contact-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .contact-card:hover, .contact-card:active { border-color: rgba(63,255,176,0.3); }
+  .contact-card.status-warn { border-color: rgba(255,209,102,0.3); background: rgba(255,209,102,0.03); }
+  .contact-card.status-danger { border-color: rgba(255,107,107,0.4); background: rgba(255,107,107,0.05); animation: danger-pulse 2s ease-in-out infinite; }
+  @keyframes danger-pulse { 0%,100% { border-color: rgba(255,107,107,0.4); } 50% { border-color: rgba(255,107,107,0.8); } }
+
+  .card-top { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+  .avatar {
+    width: 46px; height: 46px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+    border: 2px solid var(--border);
+    background: var(--surface2);
+    position: relative;
+  }
+  .avatar .status-dot {
+    position: absolute; bottom: 0; right: 0;
+    width: 13px; height: 13px; border-radius: 50%;
+    border: 2px solid var(--surface);
+  }
+  .status-dot.safe { background: var(--safe); }
+  .status-dot.warn { background: var(--warn); }
+  .status-dot.danger { background: var(--danger); animation: blink 1s step-end infinite; }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+
+  .contact-name { font-size: 16px; font-weight: 500; color: var(--text); }
+  .contact-rel { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .contact-status-tag {
+    margin-left: auto;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .tag-safe { background: rgba(63,255,176,0.1); color: var(--safe); border: 1px solid rgba(63,255,176,0.25); }
+  .tag-warn { background: rgba(255,209,102,0.1); color: var(--warn); border: 1px solid rgba(255,209,102,0.25); }
+  .tag-danger { background: rgba(255,107,107,0.1); color: var(--danger); border: 1px solid rgba(255,107,107,0.4); }
+
+  .card-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-box { background: var(--surface2); border-radius: 10px; padding: 10px 12px; }
+  .stat-label { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .stat-val { font-size: 14px; color: var(--text); }
+
+  .card-actions { display: flex; gap: 8px; margin-top: 14px; }
+  .btn { border: none; border-radius: 10px; padding: 10px 16px; font-family: 'DM Mono', monospace; font-size: 12px; cursor: pointer; transition: all 0.15s; font-weight: 500; }
+  .btn-sm { padding: 8px 12px; font-size: 11px; }
+  .btn-ghost { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--text); }
+  .btn-accent { background: var(--accent); color: var(--bg); }
+  .btn-accent:hover { opacity: 0.9; }
+  .btn-danger { background: rgba(255,107,107,0.15); color: var(--danger); border: 1px solid rgba(255,107,107,0.35); }
+  .btn-danger:hover { background: rgba(255,107,107,0.25); }
+  .btn-warn { background: rgba(255,209,102,0.12); color: var(--warn); border: 1px solid rgba(255,209,102,0.3); }
+  .btn-warn:hover { background: rgba(255,209,102,0.22); }
+  .btn-full { width: 100%; text-align: center; padding: 14px; border-radius: 12px; }
+
+  .fab {
+    position: fixed; bottom: 28px; right: 24px;
+    width: 58px; height: 58px;
+    background: var(--accent); color: var(--bg);
+    border: none; border-radius: 50%;
+    font-size: 26px; cursor: pointer;
+    box-shadow: 0 4px 24px rgba(63,255,176,0.4);
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    z-index: 40;
+  }
+  .fab:hover { transform: scale(1.08); box-shadow: 0 6px 32px rgba(63,255,176,0.55); }
+
+  /* ---- ALERT BANNER ---- */
+  .alert-banner {
+    margin: 0 20px 16px;
+    background: rgba(255,107,107,0.08);
+    border: 1px solid rgba(255,107,107,0.4);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .alert-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+  .alert-title { font-size: 13px; color: var(--danger); font-weight: 500; margin-bottom: 3px; }
+  .alert-desc { font-size: 11px; color: var(--muted); }
+
+  /* ---- DETAIL SCREEN ---- */
+  .detail-hero {
+    background: linear-gradient(180deg, var(--surface2) 0%, var(--bg) 100%);
+    padding: 28px 24px 24px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .detail-avatar {
+    width: 72px; height: 72px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 34px;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    margin: 0 auto 12px;
+    position: relative;
+  }
+  .detail-name { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 300; }
+  .detail-rel { font-size: 11px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 3px; margin-bottom: 16px; }
+  .big-status {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 18px; border-radius: 30px; font-size: 13px;
+  }
+
+  .timeline { padding: 20px; }
+  .tl-item { display: flex; gap: 14px; margin-bottom: 20px; }
+  .tl-line { display: flex; flex-direction: column; align-items: center; }
+  .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 4px; }
+  .tl-dot.inactive { background: var(--muted); }
+  .tl-connector { flex: 1; width: 1px; background: var(--border); margin-top: 4px; }
+  .tl-content { flex: 1; padding-bottom: 16px; }
+  .tl-time { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+  .tl-event { font-size: 13px; color: var(--text); }
+  .tl-detail { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .settings-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-label { font-size: 13px; color: var(--text); }
+  .settings-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .toggle {
+    width: 44px; height: 24px;
+    background: var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 18px; height: 18px;
+    background: white;
+    border-radius: 50%;
+    top: 3px; left: 3px;
+    transition: transform 0.2s;
+  }
+  .toggle.on::after { transform: translateX(20px); }
+  select {
+    background: var(--surface2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 10px; font-family: 'DM Mono', monospace; font-size: 12px;
+  }
+
+  /* ---- MONITORED (CHILD) VIEW ---- */
+  .consent-hero {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 32px 24px; text-align: center;
+    background: radial-gradient(ellipse at 50% 30%, rgba(63,255,176,0.05) 0%, transparent 60%);
+  }
+  .consent-icon { font-size: 56px; margin-bottom: 20px; }
+  .consent-title { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 300; margin-bottom: 8px; }
+  .consent-title span { color: var(--accent); }
+  .consent-desc { font-size: 13px; color: var(--muted); line-height: 1.7; max-width: 300px; margin: 0 auto 28px; }
+
+  .perms-list { text-align: left; width: 100%; max-width: 340px; margin-bottom: 32px; }
+  .perm-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+  }
+  .perm-item:last-child { border-bottom: none; }
+  .perm-icon { font-size: 18px; flex-shrink: 0; margin-top: 2px; }
+  .perm-text { font-size: 12px; color: var(--text); }
+  .perm-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .monitored-status {
+    margin: 20px;
+    background: var(--surface);
+    border: 1px solid rgba(63,255,176,0.25);
+    border-radius: var(--radius);
+    padding: 24px;
+    text-align: center;
+  }
+  .heartbeat-ring {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+    position: relative;
+    animation: glow 2s ease-in-out infinite;
+  }
+  .heartbeat-ring::before {
+    content: '';
+    position: absolute;
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    border: 1px solid var(--accent);
+    animation: ping 2s ease-out infinite;
+  }
+  .hb-inner { font-size: 32px; }
+  .monitored-label { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 300; margin-bottom: 6px; }
+  .monitored-sub { font-size: 11px; color: var(--muted); }
+  .monitored-since { font-size: 12px; color: var(--accent); margin-top: 8px; }
+
+  .location-request-card {
+    margin: 0 20px 20px;
+    background: rgba(255,107,107,0.06);
+    border: 1px solid rgba(255,107,107,0.4);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .loc-req-title { font-size: 15px; color: var(--danger); font-weight: 500; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .loc-req-msg { font-size: 12px; color: var(--muted); margin-bottom: 16px; line-height: 1.6; }
+  .loc-req-from { font-size: 11px; color: var(--text); padding: 8px 12px; background: var(--surface); border-radius: 8px; margin-bottom: 16px; }
+  .loc-btns { display: flex; gap: 10px; }
+
+  /* ---- ADD CONTACT MODAL ---- */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    display: none; align-items: flex-end;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border-radius: 24px 24px 0 0;
+    padding: 28px 24px 40px;
+    width: 100%;
+    border-top: 1px solid var(--border);
+    animation: slide-up 0.25s ease;
+  }
+  @keyframes slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
+  .modal-title { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 300; margin-bottom: 20px; }
+  .form-group { margin-bottom: 16px; }
+  .form-label { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .form-input {
+    width: 100%; background: var(--surface2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; font-family: 'DM Mono', monospace; font-size: 13px;
+    outline: none;
+  }
+  .form-input:focus { border-color: var(--accent); }
+
+  /* ---- EMERGENCY MODAL ---- */
+  .emergency-modal {
+    background: var(--surface);
+    border-radius: 24px 24px 0 0;
+    padding: 28px 24px 40px;
+    width: 100%;
+    border-top: 2px solid var(--danger);
+    animation: slide-up 0.25s ease;
+  }
+  .emergency-title { color: var(--danger); font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; margin-bottom: 8px; }
+  .emergency-desc { font-size: 12px; color: var(--muted); line-height: 1.6; margin-bottom: 20px; }
+
+  /* ---- TABS ---- */
+  .tab-bar {
+    display: flex;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    position: sticky; bottom: 0;
+  }
+  .tab-btn {
+    flex: 1; padding: 12px 8px 14px;
+    background: none; border: none; color: var(--muted);
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    transition: color 0.15s;
+  }
+  .tab-btn.active { color: var(--accent); }
+  .tab-icon { font-size: 20px; }
+
+  .tab-content { display: none; flex: 1; }
+  .tab-content.active { display: flex; flex-direction: column; }
+
+  /* ---- MISC ---- */
+  .divider { height: 1px; background: var(--border); margin: 0 20px 16px; }
+  .empty-state { padding: 48px 24px; text-align: center; color: var(--muted); }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-text { font-size: 13px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 11px; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); margin: 3px; }
+  .info-box { background: rgba(63,255,176,0.05); border: 1px solid rgba(63,255,176,0.2); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; }
+  .info-box p { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .info-box strong { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- ===== SPLASH / ROLE SELECT ===== -->
+<div id="splash" class="screen active">
+  <div class="splash-inner">
+    <div class="logo-pulse"><div class="logo-dot"></div></div>
+    <div class="app-name">Safe<span>Signal</span></div>
+    <div class="app-tagline">Privacy-first wellness monitoring</div>
+    <div class="role-cards">
+      <div class="role-card" onclick="setRole('monitor')">
+        <div class="role-icon">🛡️</div>
+        <div>
+          <div class="role-title">I'm a Monitor</div>
+          <div class="role-desc">Watch over family members &amp; get alerts if inactive</div>
+        </div>
+      </div>
+      <div class="role-card" onclick="setRole('monitored')">
+        <div class="role-icon">📡</div>
+        <div>
+          <div class="role-title">I'm being Monitored</div>
+          <div class="role-desc">Let someone trusted know I'm safe — on my terms</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MONITOR DASHBOARD ===== -->
+<div id="monitor-screen" class="screen">
+  <div class="header">
+    <div class="header-title">Safe<span>Signal</span></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-icon" onclick="showTab('settings-tab')" title="Settings">⚙️</button>
+      <button class="btn-icon" onclick="goSplash()" title="Switch role">↩</button>
+    </div>
+  </div>
+
+  <!-- TAB CONTENTS -->
+  <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+
+    <!-- PEOPLE TAB -->
+    <div id="people-tab" class="tab-content active" style="overflow-y:auto">
+      <div style="padding:16px 20px 0">
+        <div class="summary-bar">
+          <div class="summary-tile">
+            <div class="summary-num safe" id="count-safe">2</div>
+            <div class="summary-lbl">Safe</div>
+          </div>
+          <div class="summary-tile">
+            <div class="summary-num warn" id="count-warn">1</div>
+            <div class="summary-lbl">Check in</div>
+          </div>
+          <div class="summary-tile">
+            <div class="summary-num danger" id="count-danger">0</div>
+            <div class="summary-lbl">Alert</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="alert-zone"></div>
+      <div style="padding:0 20px">
+        <div class="section-label">Monitored People</div>
+      </div>
+      <div id="contact-list" style="padding:0 20px 100px"></div>
+    </div>
+
+    <!-- ACTIVITY TAB -->
+    <div id="activity-tab" class="tab-content" style="overflow-y:auto;padding:20px 20px 80px">
+      <div class="section-label">Recent Activity</div>
+      <div class="timeline" id="activity-timeline" style="padding:0"></div>
+    </div>
+
+    <!-- UPGRADE TAB -->
+    <div id="upgrade-tab" class="tab-content" style="overflow-y:auto;padding:20px 20px 80px">
+      <div style="text-align:center;padding:8px 0 24px">
+        <div style="font-family:'Fraunces',serif;font-size:26px;font-weight:300;margin-bottom:6px">Choose your <span style="color:var(--accent)">plan</span></div>
+        <div style="font-size:12px;color:var(--muted)">All plans free during launch period 🎉</div>
+      </div>
+
+      <!-- FREE PLAN -->
+      <div class="contact-card" style="border-color:rgba(255,255,255,0.1);margin-bottom:12px;position:relative">
+        <div style="position:absolute;top:14px;right:14px;background:rgba(63,255,176,0.15);color:var(--accent);border:1px solid rgba(63,255,176,0.35);border-radius:20px;padding:3px 10px;font-size:11px">Current Plan</div>
+        <div style="font-family:'Fraunces',serif;font-size:20px;font-weight:600;margin-bottom:2px">Free</div>
+        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:8px 0 4px">$0 <span style="font-size:13px;color:var(--muted);font-weight:400">/ forever</span></div>
+        <div style="height:1px;background:var(--border);margin:12px 0"></div>
+        <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:14px">
+          <div style="font-size:12px;color:var(--muted)"><span style="color:var(--safe)">✓</span> Monitor up to <strong style="color:var(--text)">2 people</strong></div>
+          <div style="font-size:12px;color:var(--muted)"><span style="color:var(--safe)">✓</span> 24-hour inactivity threshold</div>
+          <div style="font-size:12px;color:var(--muted)"><span style="color:var(--safe)">✓</span> Location requests on alert</div>
+          <div style="font-size:12px;color:var(--muted)"><span style="color:var(--safe)">✓</span> Push notifications</div>
+          <div style="font-size:12px;color:var(--muted);opacity:0.45">✗ Custom thresholds</div>
+          <div style="font-size:12px;color:var(--muted);opacity:0.45">✗ More than 2 people</div>
+        </div>
+        <button class="btn btn-ghost btn-full" style="opacity:0.5;cursor:default">Active Plan</button>
+      </div>
+
+      <!-- FAMILY PLAN -->
+      <div class="contact-card" style="border-color:rgba(63,255,176,0.35);background:rgba(63,255,176,0.03);margin-bottom:12px;position:relative">
+        <div style="position:absolute;top:14px;right:14px;background:rgba(63,255,176,0.15);color:var(--accent);border:1px solid rgba(63,255,176,0.35);border-radius:20px;padding:3px 10px;font-size:11px">Most Popular</div>
+        <div style="font-family:'Fraunces',serif;font-size:20px;font-weight:600;margin-bottom:2px">Family</div>
+        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:8px 0 4px">$3.99 <span style="font-size:13px;color:var(--muted);font-weight:400">/ month</span></div>
+        <div style="font-size:11px;color:var(--accent);margin-bottom:8px;background:rgba(63,255,176,0.08);border-radius:6px;padding:4px 8px;display:inline-block">FREE during launch — lock in now</div>
+        <div style="height:1px;background:var(--border);margin:12px 0"></div>
+        <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:14px">
+          <div style="font-size:12px;color:var(--muted)"><span style="color:var(--safe)">✓</span> Monitor up to <strong style="color:var(--text)">10 people</strong></div>
+          <div style="font-size:12px;color:var(--muted)"><span style="color:var(--safe)">✓</span> Custom thresholds per person</div>
+          <div style="font-size:12px;color:var(--muted)"><span style="color:var(--safe)">✓</span> Location history (last 5 requests)</div>
+          <div style="font-size:12px;color:var(--muted)"><span style="color:var(--safe)">✓</span> SMS backup alerts</div>
+          <div style="font-size:12px;color:var(--muted)"><span style="color:var(--safe)">✓</span> Night mode &amp; quiet hours</div>
+          <div style="font-size:12px;color:var(--muted);opacity:0.45">✗ Unlimited people</div>
+        </div>
+        <button class="btn btn-accent btn-full" onclick="showToast('Subscriptions available in full app ✓')">Get Family — Free Now</button>
+      </div>
+
+      <!-- PRO PLAN -->
+      <div class="contact-card" style="border-color:rgba(124,58,237,0.35);background:rgba(124,58,237,0.03);margin-bottom:20px">
+        <div style="font-family:'Fraunces',serif;font-size:20px;font-weight:600;margin-bottom:2px">Pro</div>
+        <div style="font-size:24px;font-weight:700;color:#a78bfa;margin:8px 0 4px">$7.99 <span style="font-size:13px;color:var(--muted);font-weight:400">/ month</span></div>
+        <div style="font-size:11px;color:#a78bfa;margin-bottom:8px;background:rgba(124,58,237,0.08);border-radius:6px;padding:4px 8px;display:inline-block">FREE during launch — lock in now</div>
+        <div style="height:1px;background:var(--border);margin:12px 0"></div>
+        <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:14px">
+          <div style="font-size:12px;color:var(--muted)"><span style="color:var(--safe)">✓</span> <strong style="color:var(--text)">Unlimited</strong> people</div>
+          <div style="font-size:12px;color:var(--muted)"><span style="color:var(--safe)">✓</span> Everything in Family</div>
+          <div style="font-size:12px;color:var(--muted)"><span style="color:var(--safe)">✓</span> Priority push delivery</div>
+          <div style="font-size:12px;color:var(--muted)"><span style="color:var(--safe)">✓</span> Activity export (PDF/CSV)</div>
+          <div style="font-size:12px;color:var(--muted)"><span style="color:var(--safe)">✓</span> Early access to new features</div>
+          <div style="font-size:12px;color:var(--muted)"><span style="color:var(--safe)">✓</span> Dedicated support</div>
+        </div>
+        <button class="btn btn-full" style="background:rgba(124,58,237,0.2);color:#a78bfa;border:1px solid rgba(124,58,237,0.4)" onclick="showToast('Subscriptions available in full app ✓')">Get Pro — Free Now</button>
+      </div>
+
+      <div style="text-align:center;font-size:11px;color:var(--muted);line-height:1.6;padding:0 8px">
+        All plans free during the launch period.<br>
+        Payments processed securely by Apple.<br>
+        Cancel anytime. No questions asked.
+      </div>
+    </div>
+    <div id="settings-tab" class="tab-content" style="overflow-y:auto;padding:20px 20px 80px">
+      <div class="section-label">Monitoring Settings</div>
+      <div class="info-box"><p>Configure default thresholds. You can also set per-person overrides on each contact's detail screen.</p></div>
+
+      <div class="settings-row">
+        <div><div class="settings-label">Inactivity Alert Threshold</div><div class="settings-sub">Request check-in after this period</div></div>
+        <select id="threshold-select" onchange="saveSettings()">
+          <option value="4">4 hours</option>
+          <option value="8">8 hours</option>
+          <option value="12">12 hours</option>
+          <option value="24" selected>24 hours</option>
+          <option value="48">48 hours</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <div><div class="settings-label">Location Request</div><div class="settings-sub">Auto-request location after alert</div></div>
+        <div class="toggle" id="auto-loc-toggle" onclick="toggleSetting('auto-loc-toggle')"></div>
+      </div>
+      <div class="settings-row">
+        <div><div class="settings-label">Push Notifications</div><div class="settings-sub">Alerts when someone goes inactive</div></div>
+        <div class="toggle on" id="notif-toggle" onclick="toggleSetting('notif-toggle')"></div>
+      </div>
+      <div class="settings-row">
+        <div><div class="settings-label">Night Mode (22:00–07:00)</div><div class="settings-sub">Suppress alerts during sleep hours</div></div>
+        <div class="toggle on" id="night-toggle" onclick="toggleSetting('night-toggle')"></div>
+      </div>
+
+      <div style="margin-top:28px" class="section-label">About &amp; Privacy</div>
+      <div class="info-box">
+        <p><strong>Privacy first.</strong> SafeSignal never shares location data unless you explicitly request it during an alert. Activity signals are heartbeat-only — no GPS tracking in normal mode. Each monitored person must give explicit consent before monitoring begins.</p>
+      </div>
+      <div style="margin-top:8px;text-align:center">
+        <div style="font-size:11px;color:var(--muted)">SafeSignal v1.0 · Your data stays on-device</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB BAR -->
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab-btn-people" onclick="showTab('people-tab')">
+      <span class="tab-icon">👥</span>People
+    </button>
+    <button class="tab-btn" id="tab-btn-activity" onclick="showTab('activity-tab')">
+      <span class="tab-icon">📋</span>Activity
+    </button>
+    <button class="tab-btn" id="tab-btn-settings" onclick="showTab('settings-tab')">
+      <span class="tab-icon">⚙️</span>Settings
+    </button>
+    <button class="tab-btn" id="tab-btn-upgrade" onclick="showTab('upgrade-tab')">
+      <span class="tab-icon">⭐</span>Plans
+    </button>
+  </div>
+
+  <button class="fab" onclick="openAddContact()">＋</button>
+</div>
+
+<!-- ===== DETAIL SCREEN ===== -->
+<div id="detail-screen" class="screen">
+  <div class="header">
+    <button class="header-back" onclick="backToMonitor()">← Back</button>
+    <div class="header-title" id="detail-header-name"></div>
+    <button class="btn-icon" onclick="openEditContact()">✏️</button>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding-bottom:40px">
+    <div class="detail-hero" id="detail-hero"></div>
+    <div style="padding:20px">
+      <div class="section-label">Actions</div>
+      <div id="detail-actions" style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px"></div>
+      <div class="section-label">Per-Person Settings</div>
+      <div class="settings-row">
+        <div><div class="settings-label">Custom Threshold</div><div class="settings-sub">Override global setting</div></div>
+        <select id="detail-threshold" onchange="saveContactThreshold()">
+          <option value="0">Use default</option>
+          <option value="4">4 hours</option>
+          <option value="8">8 hours</option>
+          <option value="12">12 hours</option>
+          <option value="24">24 hours</option>
+          <option value="48">48 hours</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <div><div class="settings-label">Extra Alerts</div><div class="settings-sub">SMS + push when inactive</div></div>
+        <div class="toggle on" id="extra-alert-toggle" onclick="toggleSetting('extra-alert-toggle')"></div>
+      </div>
+      <div class="section-label" style="margin-top:24px">Activity History (last 7 days)</div>
+      <div id="detail-timeline" class="timeline" style="padding:0"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MONITORED SCREEN ===== -->
+<div id="monitored-screen" class="screen">
+  <div class="header">
+    <div class="header-title">Safe<span>Signal</span></div>
+    <button class="btn-icon" onclick="goSplash()">↩</button>
+  </div>
+  <div style="flex:1;overflow-y:auto" id="monitored-body">
+    <!-- Consent or Active view injected by JS -->
+  </div>
+</div>
+
+<!-- ===== MODALS ===== -->
+<div class="modal-overlay" id="add-contact-modal" onclick="closeModal('add-contact-modal')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Add Person to Monitor</div>
+    <div class="form-group">
+      <div class="form-label">Name</div>
+      <input type="text" class="form-input" id="new-name" placeholder="e.g. Emma">
+    </div>
+    <div class="form-group">
+      <div class="form-label">Relationship</div>
+      <input type="text" class="form-input" id="new-rel" placeholder="e.g. Daughter, Friend">
+    </div>
+    <div class="form-group">
+      <div class="form-label">Phone / Email (to send invite)</div>
+      <input type="text" class="form-input" id="new-contact" placeholder="+1 555 000 0000">
+    </div>
+    <div class="form-group">
+      <div class="form-label">Emoji Avatar</div>
+      <div id="emoji-picker" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
+        <span class="emoji-opt" style="font-size:24px;cursor:pointer;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--accent20)" onclick="selectEmoji(this,'👧')">👧</span>
+        <span class="emoji-opt" style="font-size:24px;cursor:pointer;padding:6px;border-radius:8px;border:1px solid var(--border)" onclick="selectEmoji(this,'👦')">👦</span>
+        <span class="emoji-opt" style="font-size:24px;cursor:pointer;padding:6px;border-radius:8px;border:1px solid var(--border)" onclick="selectEmoji(this,'👩')">👩</span>
+        <span class="emoji-opt" style="font-size:24px;cursor:pointer;padding:6px;border-radius:8px;border:1px solid var(--border)" onclick="selectEmoji(this,'👨')">👨</span>
+        <span class="emoji-opt" style="font-size:24px;cursor:pointer;padding:6px;border-radius:8px;border:1px solid var(--border)" onclick="selectEmoji(this,'👴')">👴</span>
+        <span class="emoji-opt" style="font-size:24px;cursor:pointer;padding:6px;border-radius:8px;border:1px solid var(--border)" onclick="selectEmoji(this,'👵')">👵</span>
+        <span class="emoji-opt" style="font-size:24px;cursor:pointer;padding:6px;border-radius:8px;border:1px solid var(--border)" onclick="selectEmoji(this,'🧑')">🧑</span>
+        <span class="emoji-opt" style="font-size:24px;cursor:pointer;padding:6px;border-radius:8px;border:1px solid var(--border)" onclick="selectEmoji(this,'🧒')">🧒</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-ghost btn-full" onclick="closeModal('add-contact-modal')">Cancel</button>
+      <button class="btn btn-accent btn-full" onclick="addContact()">Send Invite</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="emergency-modal" onclick="closeModal('emergency-modal')">
+  <div class="emergency-modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="emergency-title">🚨 Request Location</div>
+    <div class="emergency-desc">
+      <strong id="emerg-name"></strong> has been inactive for over <strong id="emerg-hours"></strong>. 
+      A location request will be sent to their phone. They can approve or decline.<br><br>
+      Write a brief message so they know why you're asking:
+    </div>
+    <div class="form-group">
+      <textarea class="form-input" id="emerg-message" rows="3" placeholder="e.g. Just checking in, haven't heard from you all day…" style="resize:none"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-ghost btn-full" onclick="closeModal('emergency-modal')">Cancel</button>
+      <button class="btn btn-danger btn-full" onclick="sendLocationRequest()">Send Request</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="toast-modal">
+  <div style="position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--accent);color:var(--accent);padding:12px 24px;border-radius:30px;font-size:13px;z-index:200;white-space:nowrap" id="toast-msg"></div>
+</div>
+
+<script>
+// ===== STATE =====
+let currentRole = null;
+let selectedContact = null;
+let selectedEmoji = '👧';
+let monitoredConsented = false;
+let pendingLocationRequest = null;
+
+const contacts = [
+  { id: 1, name: 'Emma', rel: 'Daughter', emoji: '👧', lastSeen: Date.now() - 1.5*3600000, threshold: 24, status: 'safe', location: null, history: genHistory(1) },
+  { id: 2, name: 'James', rel: 'Son', emoji: '👦', lastSeen: Date.now() - 26*3600000, threshold: 24, status: 'danger', location: null, history: genHistory(2) },
+  { id: 3, name: 'Mom', rel: 'Parent', emoji: '👵', lastSeen: Date.now() - 10*3600000, threshold: 8, status: 'warn', location: null, history: genHistory(3) },
+];
+
+const activityLog = [
+  { time: new Date(Date.now()-20*60000), event: 'Emma checked in', detail: 'Active — used app', type: 'safe' },
+  { time: new Date(Date.now()-2.5*3600000), event: 'Mom last seen active', detail: 'Phone in use', type: 'warn' },
+  { time: new Date(Date.now()-26*3600000), event: 'James went inactive', detail: 'No phone activity for 26h', type: 'danger' },
+  { time: new Date(Date.now()-28*3600000), event: 'James last active', detail: 'App heartbeat received', type: 'safe' },
+];
+
+function genHistory(seed) {
+  const h = [];
+  const now = Date.now();
+  for (let i = 6; i >= 0; i--) {
+    const t = now - i*86400000 - (seed*3+i*7)*3600000 % 3600000;
+    h.push({ time: new Date(t), active: Math.random() > 0.15 });
+  }
+  return h;
+}
+
+// ===== NAVIGATION =====
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function setRole(role) {
+  currentRole = role;
+  if (role === 'monitor') {
+    renderMonitorDashboard();
+    showScreen('monitor-screen');
+  } else {
+    renderMonitoredView();
+    showScreen('monitored-screen');
+  }
+}
+
+function goSplash() { showScreen('splash'); }
+function backToMonitor() { showScreen('monitor-screen'); renderMonitorDashboard(); }
+
+function showTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  const map = {'people-tab':'tab-btn-people','activity-tab':'tab-btn-activity','settings-tab':'tab-btn-settings','upgrade-tab':'tab-btn-upgrade'};
+  if (map[tabId]) document.getElementById(map[tabId]).classList.add('active');
+  if (tabId === 'activity-tab') renderActivityTimeline();
+}
+
+// ===== MONITOR RENDER =====
+function renderMonitorDashboard() {
+  updateSummary();
+  renderAlertZone();
+  renderContacts();
+}
+
+function updateSummary() {
+  const safe = contacts.filter(c=>c.status==='safe').length;
+  const warn = contacts.filter(c=>c.status==='warn').length;
+  const danger = contacts.filter(c=>c.status==='danger').length;
+  document.getElementById('count-safe').textContent = safe;
+  document.getElementById('count-warn').textContent = warn;
+  document.getElementById('count-danger').textContent = danger;
+}
+
+function renderAlertZone() {
+  const zone = document.getElementById('alert-zone');
+  const dangerContacts = contacts.filter(c=>c.status==='danger');
+  if (dangerContacts.length === 0) { zone.innerHTML = ''; return; }
+  zone.innerHTML = dangerContacts.map(c => `
+    <div class="alert-banner" style="margin:0 20px 12px">
+      <div class="alert-icon">🚨</div>
+      <div style="flex:1">
+        <div class="alert-title">${c.name} has been inactive for ${hoursAgo(c.lastSeen)}</div>
+        <div class="alert-desc">Last seen ${timeAgo(c.lastSeen)}. Consider requesting their location.</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderContacts() {
+  const list = document.getElementById('contact-list');
+  if (contacts.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-text">No one added yet.<br>Tap + to invite someone.</div></div>`;
+    return;
+  }
+  list.innerHTML = contacts.map(c => {
+    const statusClass = c.status;
+    const tagClass = `tag-${c.status}`;
+    const tagLabel = c.status === 'safe' ? '● Safe' : c.status === 'warn' ? '⚠ Check in' : '🚨 Inactive';
+    return `
+    <div class="contact-card status-${statusClass}" onclick="openDetail(${c.id})">
+      <div class="card-top">
+        <div class="avatar">${c.emoji}<div class="status-dot ${statusClass}"></div></div>
+        <div>
+          <div class="contact-name">${c.name}</div>
+          <div class="contact-rel">${c.rel}</div>
+        </div>
+        <div class="contact-status-tag ${tagClass}">${tagLabel}</div>
+      </div>
+      <div class="card-stats">
+        <div class="stat-box">
+          <div class="stat-label">Last Active</div>
+          <div class="stat-val">${timeAgo(c.lastSeen)}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Alert threshold</div>
+          <div class="stat-val">${c.threshold}h inactivity</div>
+        </div>
+      </div>
+      ${c.status === 'danger' ? `
+      <div class="card-actions">
+        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();openEmergency(${c.id})">🚨 Request Location</button>
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();simulateCheckin(${c.id})">Mark Safe</button>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function renderActivityTimeline() {
+  const tl = document.getElementById('activity-timeline');
+  tl.innerHTML = activityLog.map((e, i) => `
+    <div class="tl-item">
+      <div class="tl-line">
+        <div class="tl-dot ${e.type === 'safe' ? '' : e.type === 'warn' ? '' : 'inactive'}" style="background:var(--${e.type === 'danger' ? 'danger' : e.type === 'warn' ? 'warn' : 'safe'})"></div>
+        ${i < activityLog.length-1 ? '<div class="tl-connector"></div>' : ''}
+      </div>
+      <div class="tl-content">
+        <div class="tl-time">${formatTime(e.time)}</div>
+        <div class="tl-event">${e.event}</div>
+        <div class="tl-detail">${e.detail}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ===== DETAIL =====
+function openDetail(id) {
+  selectedContact = contacts.find(c=>c.id===id);
+  if (!selectedContact) return;
+  const c = selectedContact;
+  document.getElementById('detail-header-name').textContent = c.name;
+
+  const statusColor = c.status === 'safe' ? 'var(--safe)' : c.status === 'warn' ? 'var(--warn)' : 'var(--danger)';
+  const statusLabel = c.status === 'safe' ? '● Safe' : c.status === 'warn' ? '⚠ Needs check-in' : '🚨 Inactive — action needed';
+
+  document.getElementById('detail-hero').innerHTML = `
+    <div class="detail-avatar">${c.emoji}<div class="status-dot ${c.status}"></div></div>
+    <div class="detail-name">${c.name}</div>
+    <div class="detail-rel">${c.rel}</div>
+    <div class="big-status tag-${c.status}">${statusLabel}</div>
+    <div style="margin-top:14px;font-size:12px;color:var(--muted)">Last active: <span style="color:var(--text)">${timeAgo(c.lastSeen)}</span></div>
+  `;
+
+  const actions = document.getElementById('detail-actions');
+  actions.innerHTML = '';
+
+  if (c.status === 'danger') {
+    actions.innerHTML += `<button class="btn btn-danger btn-full" onclick="openEmergency(${c.id})">🚨 Request Location Now</button>`;
+  }
+  if (c.status === 'warn') {
+    actions.innerHTML += `<button class="btn btn-warn btn-full" onclick="sendNudge(${c.id})">💬 Send Gentle Nudge</button>`;
+  }
+  actions.innerHTML += `<button class="btn btn-ghost btn-full" onclick="simulateCheckin(${c.id});backToMonitor()">✓ Mark as Safe Manually</button>`;
+  actions.innerHTML += `<button class="btn btn-ghost btn-full" onclick="removeContact(${c.id});backToMonitor()">🗑 Remove from Monitoring</button>`;
+
+  document.getElementById('detail-threshold').value = c.threshold === 24 ? 24 : c.threshold;
+
+  // Timeline
+  const dtl = document.getElementById('detail-timeline');
+  dtl.innerHTML = c.history.map((h, i) => `
+    <div class="tl-item">
+      <div class="tl-line">
+        <div class="tl-dot" style="background:${h.active ? 'var(--safe)' : 'var(--muted)'}"></div>
+        ${i < c.history.length-1 ? '<div class="tl-connector"></div>' : ''}
+      </div>
+      <div class="tl-content">
+        <div class="tl-time">${formatDate(h.time)}</div>
+        <div class="tl-event">${h.active ? 'Phone active' : 'No activity detected'}</div>
+      </div>
+    </div>
+  `).join('');
+
+  showScreen('detail-screen');
+}
+
+function saveContactThreshold() {
+  if (!selectedContact) return;
+  selectedContact.threshold = parseInt(document.getElementById('detail-threshold').value) || 24;
+  showToast('Threshold saved');
+}
+
+// ===== MONITORED VIEW =====
+function renderMonitoredView() {
+  const body = document.getElementById('monitored-body');
+  if (!monitoredConsented) {
+    body.innerHTML = `
+      <div class="consent-hero">
+        <div class="consent-icon">🤝</div>
+        <div class="consent-title">You're in <span>control</span></div>
+        <div class="consent-desc">Someone who cares about you wants to know you're safe — without tracking your every move. Here's exactly what you're agreeing to:</div>
+        <div class="perms-list">
+          <div class="perm-item">
+            <div class="perm-icon">📳</div>
+            <div><div class="perm-text">Phone activity signal</div><div class="perm-sub">They see only "active" or "inactive" — never your location</div></div>
+          </div>
+          <div class="perm-item">
+            <div class="perm-icon">📍</div>
+            <div><div class="perm-text">Location — only if you approve</div><div class="perm-sub">They can <em>request</em> your location if you've been inactive. You decide whether to share.</div></div>
+          </div>
+          <div class="perm-item">
+            <div class="perm-icon">🔕</div>
+            <div><div class="perm-text">You can pause or stop anytime</div><div class="perm-sub">Full control. Revoke monitoring with one tap.</div></div>
+          </div>
+          <div class="perm-item">
+            <div class="perm-icon">🔒</div>
+            <div><div class="perm-text">No location data stored</div><div class="perm-sub">Only shared once when you approve a request</div></div>
+          </div>
+        </div>
+        <button class="btn btn-accent btn-full" style="max-width:340px" onclick="giveConsent()">I Agree — Start Monitoring</button>
+        <button class="btn btn-ghost btn-full" style="max-width:340px;margin-top:10px" onclick="goSplash()">Not now</button>
+      </div>`;
+  } else {
+    renderMonitoredActive(body);
+  }
+}
+
+function giveConsent() {
+  monitoredConsented = true;
+  renderMonitoredView();
+  showToast('Monitoring active ✓');
+}
+
+function renderMonitoredActive(body) {
+  const hasPendingReq = pendingLocationRequest !== null;
+  body.innerHTML = `
+    ${hasPendingReq ? `
+    <div class="location-request-card">
+      <div class="loc-req-title">📍 Location Requested</div>
+      <div class="loc-req-from">From: <strong>Dad</strong> (Monitor)</div>
+      <div class="loc-req-msg">"${pendingLocationRequest.message || 'Just checking in, haven\'t heard from you in a while. Are you okay?'}"</div>
+      <div class="loc-btns">
+        <button class="btn btn-ghost" style="flex:1" onclick="declineLocation()">Decline</button>
+        <button class="btn btn-accent" style="flex:1" onclick="shareLocation()">📍 Share Location</button>
+      </div>
+    </div>` : ''}
+    <div class="monitored-status">
+      <div class="heartbeat-ring"><div class="hb-inner">💚</div></div>
+      <div class="monitored-label">You're being monitored</div>
+      <div class="monitored-sub">Your monitor can see: active / inactive only</div>
+      <div class="monitored-since">Monitoring started today</div>
+    </div>
+    <div style="padding:0 20px 20px">
+      <div class="section-label">Your Status</div>
+      <div class="stat-box" style="margin-bottom:12px">
+        <div class="stat-label">Last heartbeat sent</div>
+        <div class="stat-val">Just now</div>
+      </div>
+      <div class="stat-box" style="margin-bottom:20px">
+        <div class="stat-label">Monitored by</div>
+        <div class="stat-val">Dad (1 monitor)</div>
+      </div>
+
+      <div class="section-label">Manage</div>
+      <button class="btn btn-ghost btn-full" style="margin-bottom:10px" onclick="togglePause()">⏸ Pause Monitoring (8 hours)</button>
+      <button class="btn btn-danger btn-full" onclick="revokeConsent()">✕ Stop Being Monitored</button>
+      <div style="margin-top:12px;font-size:11px;color:var(--muted);text-align:center">Revoking will notify your monitor</div>
+    </div>`;
+}
+
+function declineLocation() {
+  pendingLocationRequest = null;
+  showToast('Location request declined');
+  renderMonitoredView();
+}
+function shareLocation() {
+  pendingLocationRequest = null;
+  showToast('📍 Location shared with monitor');
+  renderMonitoredView();
+}
+function togglePause() { showToast('Monitoring paused for 8 hours'); }
+function revokeConsent() {
+  monitoredConsented = false;
+  showToast('Monitoring stopped. Monitor notified.');
+  renderMonitoredView();
+}
+
+// ===== EMERGENCY =====
+function openEmergency(id) {
+  const c = contacts.find(x=>x.id===id);
+  document.getElementById('emerg-name').textContent = c.name;
+  document.getElementById('emerg-hours').textContent = hoursAgo(c.lastSeen);
+  document.getElementById('emerg-message').value = '';
+  openModal('emergency-modal');
+}
+
+function sendLocationRequest() {
+  const msg = document.getElementById('emerg-message').value || 'Just checking in…';
+  pendingLocationRequest = { message: msg };
+  closeModal('emergency-modal');
+  showToast('📍 Location request sent');
+  activityLog.unshift({ time: new Date(), event: 'Location request sent', detail: msg, type: 'warn' });
+}
+
+// ===== CONTACTS =====
+function addContact() {
+  const name = document.getElementById('new-name').value.trim();
+  const rel = document.getElementById('new-rel').value.trim();
+  if (!name) { showToast('Please enter a name'); return; }
+  contacts.push({
+    id: Date.now(), name, rel: rel || 'Contact', emoji: selectedEmoji,
+    lastSeen: Date.now() - 30*60000, threshold: 24, status: 'safe', location: null, history: genHistory(contacts.length)
+  });
+  closeModal('add-contact-modal');
+  renderMonitorDashboard();
+  showToast(`Invite sent to ${name} ✓`);
+  document.getElementById('new-name').value = '';
+  document.getElementById('new-rel').value = '';
+}
+
+function removeContact(id) {
+  const idx = contacts.findIndex(c=>c.id===id);
+  if (idx > -1) { contacts.splice(idx, 1); showToast('Removed from monitoring'); }
+  renderMonitorDashboard();
+}
+
+function simulateCheckin(id) {
+  const c = contacts.find(x=>x.id===id);
+  if (!c) return;
+  c.lastSeen = Date.now();
+  c.status = 'safe';
+  activityLog.unshift({ time: new Date(), event: `${c.name} marked safe`, detail: 'Manual override', type: 'safe' });
+  renderMonitorDashboard();
+  showToast(`${c.name} marked as safe ✓`);
+}
+
+function sendNudge(id) {
+  const c = contacts.find(x=>x.id===id);
+  showToast(`Nudge sent to ${c.name} 💬`);
+  activityLog.unshift({ time: new Date(), event: `Nudge sent to ${c.name}`, detail: 'Gentle check-in message', type: 'warn' });
+}
+
+function openEditContact() { showToast('Edit feature — coming soon'); }
+
+// ===== MODAL =====
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function openAddContact() { openModal('add-contact-modal'); }
+function selectEmoji(el, emoji) {
+  selectedEmoji = emoji;
+  document.querySelectorAll('.emoji-opt').forEach(e => e.style.background = '');
+  el.style.background = 'rgba(63,255,176,0.15)';
+  el.style.borderColor = 'var(--accent)';
+}
+
+// ===== SETTINGS =====
+function toggleSetting(id) {
+  document.getElementById(id).classList.toggle('on');
+}
+function saveSettings() { showToast('Settings saved'); }
+
+// ===== UTILS =====
+function timeAgo(ts) {
+  const diff = Date.now() - ts;
+  const h = Math.floor(diff/3600000);
+  const m = Math.floor((diff%3600000)/60000);
+  if (h > 23) return `${Math.floor(h/24)}d ago`;
+  if (h > 0) return `${h}h ${m}m ago`;
+  return `${m}m ago`;
+}
+function hoursAgo(ts) {
+  const h = Math.floor((Date.now()-ts)/3600000);
+  return h > 1 ? `${h} hours` : '1 hour';
+}
+function formatTime(d) {
+  return d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + ' · ' + d.toLocaleDateString([], {month:'short',day:'numeric'});
+}
+function formatDate(d) {
+  return d.toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'});
+}
+function showToast(msg) {
+  document.getElementById('toast-msg').textContent = msg;
+  openModal('toast-modal');
+  setTimeout(() => closeModal('toast-modal'), 2200);
+}
+</script>
+</body>
+</html>
