@@ -4,6 +4,7 @@ import {
   getDoc,
   updateDoc,
   addDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -123,6 +124,29 @@ export async function updateLocationRequest(
   data: Partial<LocationRequestDocument>
 ): Promise<void> {
   await updateDoc(doc(db, 'location_requests', reqId), data as DocumentData);
+}
+
+// ── Monitored Pairs (from the monitored person's perspective) ─────────────────
+
+export function subscribeMonitoredPairs(
+  monitoredId: string,
+  callback: (pairs: Array<MonitoringPairDocument & { id: string }>) => void
+): Unsubscribe {
+  const q = query(
+    collection(db, 'monitoring_pairs'),
+    where('monitoredId', '==', monitoredId)
+  );
+  return onSnapshot(q, (snap) =>
+    callback(
+      snap.docs.map((d) => ({ id: d.id, ...(d.data() as MonitoringPairDocument) }))
+    )
+  );
+}
+
+// ── Last Known Location ───────────────────────────────────────────────────────
+
+export async function deleteLastKnownLocationDoc(uid: string): Promise<void> {
+  await deleteDoc(doc(db, 'last_known_location', uid));
 }
 
 // ── Users ─────────────────────────────────────────────────────────────────────

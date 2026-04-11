@@ -16,13 +16,21 @@ import ContactDetailScreen from '../screens/monitor/ContactDetailScreen';
 import AddContactModal from '../screens/monitor/AddContactModal';
 import EmergencyModal from '../screens/monitor/EmergencyModal';
 import MonitoredActiveScreen from '../screens/monitored/MonitoredActiveScreen';
+import MonitoredConsentScreen from '../screens/monitored/MonitoredConsentScreen';
+import LocationRequestScreen from '../screens/monitored/LocationRequestScreen';
 import SettingsScreen from '../screens/shared/SettingsScreen';
 
-import type { MonitorStackParamList, AppStackParamList, AuthStackParamList } from './types';
+import type {
+  MonitorStackParamList,
+  MonitoredStackParamList,
+  AppStackParamList,
+  AuthStackParamList,
+} from './types';
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const AppStack = createNativeStackNavigator<AppStackParamList>();
 const MonitorStack = createNativeStackNavigator<MonitorStackParamList>();
+const MonitoredStack = createNativeStackNavigator<MonitoredStackParamList>();
 const Tab = createBottomTabNavigator();
 
 function MonitorTabs() {
@@ -58,7 +66,7 @@ function MonitorNav() {
   );
 }
 
-function MonitoredNav() {
+function MonitoredTabs() {
   return (
     <Tab.Navigator screenOptions={{ headerShown: false }}>
       <Tab.Screen
@@ -68,6 +76,20 @@ function MonitoredNav() {
       />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
+  );
+}
+
+function MonitoredNav() {
+  return (
+    <MonitoredStack.Navigator screenOptions={{ headerShown: false }}>
+      <MonitoredStack.Screen name="MonitoredTabs" component={MonitoredTabs} />
+      <MonitoredStack.Screen name="MonitoredConsent" component={MonitoredConsentScreen} />
+      <MonitoredStack.Screen
+        name="LocationRequest"
+        component={LocationRequestScreen}
+        options={{ presentation: 'modal' }}
+      />
+    </MonitoredStack.Navigator>
   );
 }
 

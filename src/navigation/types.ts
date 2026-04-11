@@ -22,3 +22,15 @@ export type MonitorStackParamList = {
     contactName: string;
   };
 };
+
+export type MonitoredStackParamList = {
+  MonitoredTabs: undefined;
+  MonitoredConsent: {
+    pairId: string;
+    monitorName: string;
+    autoDisclosureAfterH: number | null;
+  };
+  LocationRequest: {
+    requestId: string;
+  };
+};
