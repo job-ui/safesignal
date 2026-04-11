@@ -20,6 +20,10 @@ export interface MonitoringPairDocument {
   autoDisclosureAfterH: number | null;
   monitoredConsentedAt: Timestamp | null;
   sentAlertAt?: Timestamp | null;
+  // Contact display info set by the monitor when adding the contact
+  contactName?: string;
+  contactEmoji?: string;
+  contactRelationship?: string;
 }
 
 // 3. heartbeats/{uid}

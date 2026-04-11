@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as Notifications from 'expo-notifications';
 import { doc, updateDoc } from 'firebase/firestore';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { auth, db } from './src/services/auth';
 import { registerForPushNotifications } from './src/services/notifications';
 import { HEARTBEAT_TASK } from './src/constants/tasks';
@@ -42,5 +43,9 @@ export default function App() {
     setupPushNotifications();
   }, []);
 
-  return <RootNavigator />;
+  return (
+    <SafeAreaProvider>
+      <RootNavigator />
+    </SafeAreaProvider>
+  );
 }

@@ -12,52 +12,86 @@ import SignUpScreen from '../screens/auth/SignUpScreen';
 import RoleSelectScreen from '../screens/RoleSelectScreen';
 import MonitorDashboardScreen from '../screens/monitor/MonitorDashboardScreen';
 import ActivityLogScreen from '../screens/monitor/ActivityLogScreen';
+import ContactDetailScreen from '../screens/monitor/ContactDetailScreen';
+import AddContactModal from '../screens/monitor/AddContactModal';
+import EmergencyModal from '../screens/monitor/EmergencyModal';
 import MonitoredActiveScreen from '../screens/monitored/MonitoredActiveScreen';
 import SettingsScreen from '../screens/shared/SettingsScreen';
 
-const Stack = createNativeStackNavigator();
+import type { MonitorStackParamList, AppStackParamList, AuthStackParamList } from './types';
+
+const AuthStack = createNativeStackNavigator<AuthStackParamList>();
+const AppStack = createNativeStackNavigator<AppStackParamList>();
+const MonitorStack = createNativeStackNavigator<MonitorStackParamList>();
 const Tab = createBottomTabNavigator();
 
-function MonitorNav() {
+function MonitorTabs() {
   return (
     <Tab.Navigator screenOptions={{ headerShown: false }}>
       <Tab.Screen name="Dashboard" component={MonitorDashboardScreen} />
-      <Tab.Screen name="ActivityLog" component={ActivityLogScreen} options={{ title: 'Activity' }} />
+      <Tab.Screen
+        name="ActivityLog"
+        component={ActivityLogScreen}
+        options={{ title: 'Activity' }}
+      />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
+  );
+}
+
+function MonitorNav() {
+  return (
+    <MonitorStack.Navigator screenOptions={{ headerShown: false }}>
+      <MonitorStack.Screen name="MonitorTabs" component={MonitorTabs} />
+      <MonitorStack.Screen name="ContactDetail" component={ContactDetailScreen} />
+      <MonitorStack.Screen
+        name="AddContactModal"
+        component={AddContactModal}
+        options={{ presentation: 'modal' }}
+      />
+      <MonitorStack.Screen
+        name="EmergencyModal"
+        component={EmergencyModal}
+        options={{ presentation: 'modal' }}
+      />
+    </MonitorStack.Navigator>
   );
 }
 
 function MonitoredNav() {
   return (
     <Tab.Navigator screenOptions={{ headerShown: false }}>
-      <Tab.Screen name="MonitoredActive" component={MonitoredActiveScreen} options={{ title: 'Status' }} />
+      <Tab.Screen
+        name="MonitoredActive"
+        component={MonitoredActiveScreen}
+        options={{ title: 'Status' }}
+      />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
 }
 
-function AuthStack() {
+function AuthNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="SignIn" component={SignInScreen} />
-      <Stack.Screen name="SignUp" component={SignUpScreen} />
-    </Stack.Navigator>
+    <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+      <AuthStack.Screen name="SignIn" component={SignInScreen} />
+      <AuthStack.Screen name="SignUp" component={SignUpScreen} />
+    </AuthStack.Navigator>
   );
 }
 
-function AppStack() {
+function AppNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="RoleSelect" component={RoleSelectScreen} />
-      <Stack.Screen name="MonitorNav" component={MonitorNav} />
-      <Stack.Screen name="MonitoredNav" component={MonitoredNav} />
-    </Stack.Navigator>
+    <AppStack.Navigator screenOptions={{ headerShown: false }}>
+      <AppStack.Screen name="RoleSelect" component={RoleSelectScreen} />
+      <AppStack.Screen name="MonitorNav" component={MonitorNav} />
+      <AppStack.Screen name="MonitoredNav" component={MonitoredNav} />
+    </AppStack.Navigator>
   );
 }
 
 export default function RootNavigator() {
-  const { currentUser, isLoading, setUser, clearUser, setLoading } = useAuthStore();
+  const { currentUser, isLoading, setUser, clearUser } = useAuthStore();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged((user) => {
@@ -73,14 +107,14 @@ export default function RootNavigator() {
   if (isLoading) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color="#4CAF50" />
+        <ActivityIndicator size="large" color="#4A90D9" />
       </View>
     );
   }
 
   return (
     <NavigationContainer>
-      {currentUser ? <AppStack /> : <AuthStack />}
+      {currentUser ? <AppNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );
 }
