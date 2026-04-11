@@ -1,0 +1,63 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── users/{uid} ───────────────────────────────────────────────────────────
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // ── monitoring_pairs/{pairId} ─────────────────────────────────────────────
+    match /monitoring_pairs/{pairId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.monitorId ||
+         request.auth.uid == resource.data.monitoredId);
+
+      allow create: if request.auth != null &&
+        request.auth.uid == request.resource.data.monitorId;
+
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.monitorId ||
+        (request.auth.uid == resource.data.monitoredId &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['status', 'consentAt', 'monitoredConsentedAt']))
+      );
+    }
+
+    // ── heartbeats/{uid} ──────────────────────────────────────────────────────
+    match /heartbeats/{uid} {
+      allow write: if request.auth != null && request.auth.uid == uid;
+      allow read: if request.auth != null;
+    }
+
+    // ── location_requests/{reqId} ─────────────────────────────────────────────
+    match /location_requests/{reqId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.fromUserId ||
+         request.auth.uid == resource.data.toUserId);
+
+      allow create: if request.auth != null &&
+        request.auth.uid == request.resource.data.fromUserId;
+
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.fromUserId ||
+        (request.auth.uid == resource.data.toUserId &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['status', 'respondedAt', 'location', 'locationType']))
+      );
+    }
+
+    // ── last_known_location/{uid} ─────────────────────────────────────────────
+    match /last_known_location/{uid} {
+      allow write, delete: if request.auth != null && request.auth.uid == uid;
+      allow read: if request.auth != null;
+    }
+
+    // ── subscriptions/{uid} ───────────────────────────────────────────────────
+    // Users read only; all writes come from Admin SDK (RevenueCat webhook).
+    match /subscriptions/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "monitoring_pairs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "monitorId", "order": "ASCENDING" },
+        { "fieldPath": "monitoredId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "location_requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "autoTriggerAfterH", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "location_requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fromUserId", "order": "ASCENDING" },
+        { "fieldPath": "requestedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "location_requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "toUserId", "order": "ASCENDING" },
+        { "fieldPath": "requestedAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
