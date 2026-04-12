@@ -124,13 +124,33 @@ safesignal/
 
 ## Progress Tracking
 Update this section as phases complete:
-- [ ] Phase 0 — Environment setup
-- [ ] Phase 1 — Auth + Navigation shell
-- [ ] Phase 2 — Monitor flow
-- [ ] Phase 3 — Monitored flow
-- [ ] Phase 4 — Cloud Functions
+- [x] Phase 0 — Environment setup
+- [x] Phase 1 — Auth + Navigation shell
+- [x] Phase 2 — Monitor flow
+- [x] Phase 3 — Monitored flow
+- [x] Phase 4 — Cloud Functions (written + rules deployed; functions pending GCP permissions fix)
 - [ ] Phase 5 — Subscriptions + Polish
 - [ ] Phase 6 — TestFlight
+
+## Cloud Functions — Deployment Note
+All four functions are fully written (firebase-functions v1 syntax, Node 20):
+- `inactivityChecker` — scheduled every 15 min
+- `locationCleanup` — Firestore onUpdate trigger, 60s delay
+- `locationRequestTimeout` — scheduled every 30 min
+- `inviteHandler` — HTTP onRequest
+
+**Pending:** Artifact Registry repository-level IAM permission is blocking Cloud Build on new GCP account.
+Fix: run in Cloud Shell before Phase 6 deploy:
+```bash
+gcloud artifacts repositories add-iam-policy-binding gcf-artifacts \
+  --location=europe-west1 \
+  --project=safesignal-7d538 \
+  --member="serviceAccount:340802471906@cloudbuild.gserviceaccount.com" \
+  --role="roles/artifactregistry.writer"
+```
+Then uncomment all exports in `functions/src/index.ts` and run `firebase deploy --only functions`.
+
+**Deployed:** Firestore security rules + 4 composite indexes — live in production.
 ```
 
 ---

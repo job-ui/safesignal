@@ -1,7 +1,6 @@
-import { onSchedule } from 'firebase-functions/v2/scheduler';
+import * as functions from 'firebase-functions/v1';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
-import * as logger from 'firebase-functions/logger';
 import type {
   LocationRequestDocument,
   MonitoringPairDocument,
@@ -9,106 +8,102 @@ import type {
   UserDocument,
 } from './types';
 
-export const locationRequestTimeout = onSchedule('every 30 minutes', async () => {
-  const db = getFirestore();
-  const now = Date.now();
+export const locationRequestTimeout = functions
+  .region('europe-west1')
+  .pubsub.schedule('every 30 minutes')
+  .onRun(async () => {
+    const db = getFirestore();
+    const now = Date.now();
 
-  // Query pending requests that have an auto-trigger time set
-  const requestsSnap = await db.collection('location_requests')
-    .where('status', '==', 'pending')
-    .where('autoTriggerAfterH', '>', 0)
-    .get();
-
-  if (requestsSnap.empty) return;
-
-  const tasks = requestsSnap.docs.map(async (reqDoc) => {
-    const req = reqDoc.data() as LocationRequestDocument;
-    const { fromUserId, toUserId, autoTriggerAfterH, requestedAt } = req;
-
-    if (!autoTriggerAfterH || !requestedAt) return;
-
-    const hoursWaiting = (now - requestedAt.toMillis()) / 3_600_000;
-    if (hoursWaiting < autoTriggerAfterH) return;
-
-    // Verify an active monitoring pair with consent exists
-    const pairsSnap = await db.collection('monitoring_pairs')
-      .where('monitorId', '==', fromUserId)
-      .where('monitoredId', '==', toUserId)
-      .limit(1)
+    // Query pending requests that have an auto-trigger time set
+    const requestsSnap = await db.collection('location_requests')
+      .where('status', '==', 'pending')
+      .where('autoTriggerAfterH', '>', 0)
       .get();
 
-    if (pairsSnap.empty) {
-      logger.warn(`No monitoring pair found for request ${reqDoc.id}`);
-      return;
-    }
+    if (requestsSnap.empty) return;
 
-    const pair = pairsSnap.docs[0].data() as MonitoringPairDocument;
+    const tasks = requestsSnap.docs.map(async (reqDoc) => {
+      const req = reqDoc.data() as LocationRequestDocument;
+      const { fromUserId, toUserId, autoTriggerAfterH, requestedAt } = req;
 
-    if (!pair.monitoredConsentedAt) {
-      // Monitored person never consented to auto-disclosure — resolve as unavailable
-      await reqDoc.ref.update({
-        status: 'auto_resolved',
-        locationType: 'unavailable',
-        autoTriggeredAt: FieldValue.serverTimestamp(),
-      });
-      logger.info(`Request ${reqDoc.id} auto-resolved — no consent`);
-      await sendTimeoutFCM(
-        db,
-        fromUserId,
-        pair.contactName ?? 'Your contact',
-        null,
-        reqDoc.id
-      );
-      return;
-    }
+      if (!autoTriggerAfterH || !requestedAt) return;
 
-    // Get monitor's FCM token (for notification after resolution)
-    const contactName = pair.contactName ?? 'Your contact';
+      const hoursWaiting = (now - requestedAt.toMillis()) / 3_600_000;
+      if (hoursWaiting < autoTriggerAfterH) return;
 
-    // Check if last_known_location exists for the monitored person
-    const locSnap = await db.doc(`last_known_location/${toUserId}`).get();
+      // Verify an active monitoring pair with consent exists
+      const pairsSnap = await db.collection('monitoring_pairs')
+        .where('monitorId', '==', fromUserId)
+        .where('monitoredId', '==', toUserId)
+        .limit(1)
+        .get();
 
-    const batch = db.batch();
+      if (pairsSnap.empty) {
+        functions.logger.warn(`No monitoring pair found for request ${reqDoc.id}`);
+        return;
+      }
 
-    if (locSnap.exists) {
-      const locData = locSnap.data() as LastKnownLocationDocument;
-      const locationAgeH = (now - locData.recordedAt.toMillis()) / 3_600_000;
-      const locationAgeRounded = Math.round(locationAgeH);
+      const pair = pairsSnap.docs[0].data() as MonitoringPairDocument;
 
-      batch.update(reqDoc.ref, {
-        status: 'auto_resolved',
-        location: locData.location,
-        locationType: 'last_seen',
-        autoTriggeredAt: FieldValue.serverTimestamp(),
-        lastKnownRecordedAt: locData.recordedAt,
-      });
+      if (!pair.monitoredConsentedAt) {
+        // Monitored person never consented to auto-disclosure — resolve as unavailable
+        await reqDoc.ref.update({
+          status: 'auto_resolved',
+          locationType: 'unavailable',
+          autoTriggeredAt: FieldValue.serverTimestamp(),
+        });
+        functions.logger.info(`Request ${reqDoc.id} auto-resolved — no consent`);
+        await sendTimeoutFCM(
+          db,
+          fromUserId,
+          pair.contactName ?? 'Your contact',
+          null,
+          reqDoc.id
+        );
+        return;
+      }
 
-      await batch.commit();
+      const contactName = pair.contactName ?? 'Your contact';
 
-      await sendTimeoutFCM(
-        db,
-        fromUserId,
-        contactName,
-        locationAgeRounded,
-        reqDoc.id
-      );
-      logger.info(`Request ${reqDoc.id} auto-resolved with last_known_location`);
-    } else {
-      batch.update(reqDoc.ref, {
-        status: 'auto_resolved',
-        locationType: 'unavailable',
-        autoTriggeredAt: FieldValue.serverTimestamp(),
-      });
+      // Check if last_known_location exists for the monitored person
+      const locSnap = await db.doc(`last_known_location/${toUserId}`).get();
 
-      await batch.commit();
+      const batch = db.batch();
 
-      await sendTimeoutFCM(db, fromUserId, contactName, null, reqDoc.id);
-      logger.info(`Request ${reqDoc.id} auto-resolved — no location available`);
-    }
+      if (locSnap.exists) {
+        const locData = locSnap.data() as LastKnownLocationDocument;
+        const locationAgeH = (now - locData.recordedAt.toMillis()) / 3_600_000;
+        const locationAgeRounded = Math.round(locationAgeH);
+
+        batch.update(reqDoc.ref, {
+          status: 'auto_resolved',
+          location: locData.location,
+          locationType: 'last_seen',
+          autoTriggeredAt: FieldValue.serverTimestamp(),
+          lastKnownRecordedAt: locData.recordedAt,
+        });
+
+        await batch.commit();
+
+        await sendTimeoutFCM(db, fromUserId, contactName, locationAgeRounded, reqDoc.id);
+        functions.logger.info(`Request ${reqDoc.id} auto-resolved with last_known_location`);
+      } else {
+        batch.update(reqDoc.ref, {
+          status: 'auto_resolved',
+          locationType: 'unavailable',
+          autoTriggeredAt: FieldValue.serverTimestamp(),
+        });
+
+        await batch.commit();
+
+        await sendTimeoutFCM(db, fromUserId, contactName, null, reqDoc.id);
+        functions.logger.info(`Request ${reqDoc.id} auto-resolved — no location available`);
+      }
+    });
+
+    await Promise.allSettled(tasks);
   });
-
-  await Promise.allSettled(tasks);
-});
 
 async function sendTimeoutFCM(
   db: FirebaseFirestore.Firestore,
@@ -122,7 +117,7 @@ async function sendTimeoutFCM(
 
   const monitor = monitorSnap.data() as UserDocument;
   if (!monitor.fcmToken) {
-    logger.warn(`No FCM token for monitor ${monitorId} — cannot notify about request ${reqId}`);
+    functions.logger.warn(`No FCM token for monitor ${monitorId} — cannot notify about request ${reqId}`);
     return;
   }
 

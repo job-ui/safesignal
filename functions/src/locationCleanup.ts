@@ -1,14 +1,13 @@
-import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
+import * as functions from 'firebase-functions/v1';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import * as logger from 'firebase-functions/logger';
 
-export const locationCleanup = onDocumentUpdated(
-  { document: 'location_requests/{reqId}', timeoutSeconds: 120 },
-  async (event) => {
-    const before = event.data?.before.data();
-    const after = event.data?.after.data();
-
-    if (!before || !after) return;
+export const locationCleanup = functions
+  .region('europe-west1')
+  .runWith({ timeoutSeconds: 120 })
+  .firestore.document('location_requests/{reqId}')
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
 
     // Only act when status transitions to 'approved' or 'resolved'
     const statusChanged = before.status !== after.status;
@@ -16,7 +15,7 @@ export const locationCleanup = onDocumentUpdated(
 
     if (!statusChanged || !isTerminalStatus) return;
 
-    const reqId = event.params.reqId;
+    const reqId = context.params.reqId;
 
     // Wait 60 seconds, then wipe the location field
     await new Promise<void>((resolve) => setTimeout(resolve, 60_000));
@@ -26,6 +25,5 @@ export const locationCleanup = onDocumentUpdated(
       location: FieldValue.delete(),
     });
 
-    logger.info(`Location cleaned up for request ${reqId}`);
-  }
-);
+    functions.logger.info(`Location cleaned up for request ${reqId}`);
+  });
