@@ -15,10 +15,36 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.safesignal.app",
+      "privacyManifests": {
+        "NSPrivacyTracking": false,
+        "NSPrivacyTrackingDomains": [],
+        "NSPrivacyAccessedAPITypes": [],
+        "NSPrivacyCollectedDataTypes": [
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeEmailAddress",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeCoarseLocation",
+            "NSPrivacyCollectedDataTypeLinked": false,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          }
+        ]
+      },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "SafeSignal reads your cached location to share with your emergency contacts if you don't respond to a request.",
         "NSUserNotificationsUsageDescription": "SafeSignal sends you alerts when your contacts are inactive or request your location.",
-        "BGTaskSchedulerPermittedIdentifiers": ["com.safesignal.heartbeat"]
+        "BGTaskSchedulerPermittedIdentifiers": [
+          "com.safesignal.heartbeat"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -40,6 +66,11 @@
           "color": "#ffffff"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "6b4dacb7-c7a5-42cd-b462-a6040a0f4999"
+      }
+    }
   }
 }

@@ -19,7 +19,7 @@ async function registerHeartbeatTask() {
     if (!isAvailable) return;
 
     await BackgroundFetch.registerTaskAsync(HEARTBEAT_TASK, {
-      minimumInterval: 60, // 60s for testing; change to 900 before TestFlight
+      minimumInterval: 900, // 15 minutes
       stopOnTerminate: false,
       startOnBoot: true,
     });
