@@ -8,15 +8,36 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '../../stores/authStore';
+import { useSubscriptionStore } from '../../stores/subscriptionStore';
 import { signOut } from '../../services/auth';
 import { subscribeMonitoringPairs, updateMonitoringPair } from '../../services/firestore';
 import type { MonitoringPairDocument } from '../../types/firestore';
+import type { MonitorStackParamList } from '../../navigation/types';
+import { PlanTier } from '../../types/enums';
 
 const THRESHOLD_OPTIONS = [4, 8, 12, 24, 48, 72];
 
+const PLAN_LABELS: Record<PlanTier, string> = {
+  [PlanTier.Free]: 'Free',
+  [PlanTier.Family]: 'Family',
+  [PlanTier.Pro]: 'Pro',
+};
+
+const PLAN_COLORS: Record<PlanTier, string> = {
+  [PlanTier.Free]: '#9E9E9E',
+  [PlanTier.Family]: '#4A90D9',
+  [PlanTier.Pro]: '#7B1FA2',
+};
+
+type Nav = NativeStackNavigationProp<MonitorStackParamList>;
+
 export default function SettingsScreen() {
   const { currentUser, clearUser } = useAuthStore();
+  const { plan } = useSubscriptionStore();
+  const navigation = useNavigation<Nav>();
   const [pairs, setPairs] = useState<Array<MonitoringPairDocument & { id: string }>>([]);
 
   useEffect(() => {
@@ -52,6 +73,49 @@ export default function SettingsScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <Text style={styles.title}>Settings</Text>
       <ScrollView contentContainerStyle={styles.scroll}>
+
+        {/* Subscription */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Subscription</Text>
+          <View style={styles.planRow}>
+            <View style={[styles.planBadge, { backgroundColor: PLAN_COLORS[plan] + '22' }]}>
+              <Text style={[styles.planBadgeText, { color: PLAN_COLORS[plan] }]}>
+                {PLAN_LABELS[plan]} Plan
+              </Text>
+            </View>
+            {plan === PlanTier.Free && (
+              <TouchableOpacity
+                style={styles.upgradeBtn}
+                onPress={() => navigation.navigate('SubscriptionPlans')}
+              >
+                <Text style={styles.upgradeBtnText}>Upgrade →</Text>
+              </TouchableOpacity>
+            )}
+            {plan !== 'free' && (
+              <TouchableOpacity
+                style={styles.manageBtn}
+                onPress={() => navigation.navigate('SubscriptionPlans')}
+              >
+                <Text style={styles.manageBtnText}>Manage</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          {plan === PlanTier.Free && (
+            <Text style={styles.planHint}>
+              Monitor up to 2 people · 24h threshold · No auto-disclosure
+            </Text>
+          )}
+          {plan === PlanTier.Family && (
+            <Text style={styles.planHint}>
+              Monitor up to 10 people · Custom thresholds · Auto-disclosure up to 6h
+            </Text>
+          )}
+          {plan === PlanTier.Pro && (
+            <Text style={styles.planHint}>
+              Unlimited contacts · All thresholds · Auto-disclosure 2h–24h
+            </Text>
+          )}
+        </View>
 
         {/* Inactivity thresholds */}
         {activePairs.length > 0 && (
@@ -91,18 +155,31 @@ export default function SettingsScreen() {
           </View>
         )}
 
-        {/* Privacy */}
+        {/* Privacy & Data */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Privacy & Data</Text>
+          <Text style={styles.sectionSubtitle}>What SafeSignal stores and when</Text>
           {[
-            'SafeSignal only monitors whether your contacts have used their phone recently — never their location.',
-            'Location is only shared when a contact explicitly approves each individual request.',
-            'Auto-disclosure only activates if your contact has separately opted in. It is off by default.',
-            'Shared location data is deleted from SafeSignal servers 60 seconds after being viewed.',
-          ].map((text, i) => (
+            {
+              icon: '💚',
+              text: 'Heartbeat: a timestamp of when you last used the app, updated every 15 minutes while the app runs.',
+            },
+            {
+              icon: '📍',
+              text: 'Location: only recorded if you explicitly approve a request, or if you have separately opted in to auto-disclosure.',
+            },
+            {
+              icon: '🗑️',
+              text: 'Shared location data is deleted from SafeSignal servers 60 seconds after the monitor has received it.',
+            },
+            {
+              icon: '🔒',
+              text: 'Auto-disclosure is off by default and requires your explicit, separate consent before any location is ever stored.',
+            },
+          ].map((item, i) => (
             <View key={i} style={styles.privacyRow}>
-              <Text style={styles.privacyBullet}>✓</Text>
-              <Text style={styles.privacyText}>{text}</Text>
+              <Text style={styles.privacyIcon}>{item.icon}</Text>
+              <Text style={styles.privacyText}>{item.text}</Text>
             </View>
           ))}
         </View>
@@ -136,6 +213,35 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 16, fontWeight: '600', color: '#1A1A2E', marginBottom: 4 },
   sectionSubtitle: { fontSize: 13, color: '#666', marginBottom: 14 },
+  planRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  planBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  planBadgeText: { fontSize: 14, fontWeight: '700' },
+  planHint: { fontSize: 12, color: '#888', lineHeight: 18 },
+  upgradeBtn: {
+    backgroundColor: '#4A90D9',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  upgradeBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  manageBtn: {
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#DDE3EE',
+  },
+  manageBtnText: { color: '#4A90D9', fontSize: 13, fontWeight: '600' },
   pairBlock: { marginBottom: 16 },
   pairName: { fontSize: 14, fontWeight: '500', color: '#333', marginBottom: 8 },
   thresholdRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
@@ -148,8 +254,8 @@ const styles = StyleSheet.create({
   thresholdChipActive: { backgroundColor: '#4A90D9' },
   thresholdChipText: { fontSize: 13, color: '#333' },
   thresholdChipTextActive: { color: '#fff', fontWeight: '600' },
-  privacyRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
-  privacyBullet: { color: '#4CAF50', fontSize: 14, fontWeight: '700' },
+  privacyRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  privacyIcon: { fontSize: 16, width: 20, textAlign: 'center' },
   privacyText: { flex: 1, fontSize: 13, color: '#444', lineHeight: 19 },
   accountEmail: { fontSize: 14, color: '#666', marginBottom: 14 },
   signOutBtn: {

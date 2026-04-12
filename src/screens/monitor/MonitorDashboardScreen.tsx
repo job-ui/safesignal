@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   StyleSheet,
   Text,
@@ -23,6 +24,7 @@ export default function MonitorDashboardScreen() {
   const navigation = useNavigation<Nav>();
   const [pairs, setPairs] = useState<Array<MonitoringPairDocument & { id: string }>>([]);
   const [heartbeats, setHeartbeats] = useState<Record<string, HeartbeatDocument | null>>({});
+  const [isLoading, setIsLoading] = useState(true);
   const heartbeatUnsubs = useRef<Record<string, () => void>>({});
 
   useEffect(() => {
@@ -30,6 +32,7 @@ export default function MonitorDashboardScreen() {
 
     const pairsUnsub = subscribeMonitoringPairs(currentUser.uid, (newPairs) => {
       setPairs(newPairs);
+      setIsLoading(false);
       newPairs.forEach((pair) => {
         if (!pair.monitoredId || heartbeatUnsubs.current[pair.monitoredId]) return;
         const hbUnsub = subscribeHeartbeat(pair.monitoredId, (hb) => {
@@ -61,6 +64,17 @@ export default function MonitorDashboardScreen() {
     const hb = heartbeats[p.monitoredId];
     return !hb || computeStatus(hb.lastSeen, p.threshold_hours) === 'danger';
   });
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <Text style={styles.title}>SafeSignal</Text>
+        <View style={styles.loadingState}>
+          <ActivityIndicator size="large" color="#4A90D9" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -150,6 +164,7 @@ const styles = StyleSheet.create({
   },
   dangerText: { color: '#C62828', fontSize: 14, fontWeight: '500' },
   list: { padding: 16, gap: 12, paddingBottom: 80 },
+  loadingState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   empty: { alignItems: 'center', paddingTop: 80 },
   emptyTitle: { fontSize: 18, fontWeight: '600', color: '#333', marginBottom: 8 },
   emptySubtitle: { fontSize: 14, color: '#888' },

@@ -19,6 +19,8 @@ import MonitoredActiveScreen from '../screens/monitored/MonitoredActiveScreen';
 import MonitoredConsentScreen from '../screens/monitored/MonitoredConsentScreen';
 import LocationRequestScreen from '../screens/monitored/LocationRequestScreen';
 import SettingsScreen from '../screens/shared/SettingsScreen';
+import SubscriptionPlansScreen from '../screens/shared/SubscriptionPlansScreen';
+import OfflineBanner from '../components/OfflineBanner';
 
 import type {
   MonitorStackParamList,
@@ -62,6 +64,11 @@ function MonitorNav() {
         component={EmergencyModal}
         options={{ presentation: 'modal' }}
       />
+      <MonitorStack.Screen
+        name="SubscriptionPlans"
+        component={SubscriptionPlansScreen}
+        options={{ presentation: 'modal' }}
+      />
     </MonitorStack.Navigator>
   );
 }
@@ -87,6 +94,11 @@ function MonitoredNav() {
       <MonitoredStack.Screen
         name="LocationRequest"
         component={LocationRequestScreen}
+        options={{ presentation: 'modal' }}
+      />
+      <MonitoredStack.Screen
+        name="SubscriptionPlans"
+        component={SubscriptionPlansScreen}
         options={{ presentation: 'modal' }}
       />
     </MonitoredStack.Navigator>
@@ -136,6 +148,7 @@ export default function RootNavigator() {
 
   return (
     <NavigationContainer>
+      <OfflineBanner />
       {currentUser ? <AppNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );

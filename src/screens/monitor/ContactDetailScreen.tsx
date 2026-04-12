@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   ScrollView,
   StyleSheet,
@@ -20,6 +21,8 @@ import {
 import { computeStatus, formatTimeAgo } from '../../utils/statusCompute';
 import type { HeartbeatDocument, LocationRequestDocument, MonitoringPairDocument } from '../../types/firestore';
 import { useAuthStore } from '../../stores/authStore';
+import { useSubscriptionStore } from '../../stores/subscriptionStore';
+import { PlanTier } from '../../types/enums';
 
 type Props = NativeStackScreenProps<MonitorStackParamList, 'ContactDetail'>;
 type Nav = NativeStackNavigationProp<MonitorStackParamList>;
@@ -46,6 +49,7 @@ const REQUEST_ICONS: Record<string, string> = {
 export default function ContactDetailScreen({ route }: Props) {
   const { pairId, monitoredId } = route.params;
   const { currentUser } = useAuthStore();
+  const { plan } = useSubscriptionStore();
   const navigation = useNavigation<Nav>();
 
   const [pair, setPair] = useState<(MonitoringPairDocument & { id: string }) | null>(null);
@@ -53,6 +57,7 @@ export default function ContactDetailScreen({ route }: Props) {
   const [locationRequests, setLocationRequests] = useState<
     Array<LocationRequestDocument & { id: string }>
   >([]);
+  const [loadingPair, setLoadingPair] = useState(true);
   const [savingAutoDisclose, setSavingAutoDisclose] = useState(false);
 
   useEffect(() => {
@@ -60,6 +65,7 @@ export default function ContactDetailScreen({ route }: Props) {
     return subscribeMonitoringPairs(currentUser.uid, (pairs) => {
       const found = pairs.find((p) => p.id === pairId) ?? null;
       setPair(found);
+      setLoadingPair(false);
     });
   }, [currentUser?.uid, pairId]);
 
@@ -83,6 +89,7 @@ export default function ContactDetailScreen({ route }: Props) {
   const contactEmoji = pair?.contactEmoji ?? '👤';
   const currentAutoH = pair?.autoDisclosureAfterH ?? 0;
   const monitoredHasConsented = pair?.monitoredConsentedAt != null;
+  const isFreePlan = plan === PlanTier.Free;
 
   const sevenDaysAgo = Date.now() - 7 * 24 * 3_600_000;
   const recentRequests = locationRequests.filter(
@@ -101,6 +108,19 @@ export default function ContactDetailScreen({ route }: Props) {
     } finally {
       setSavingAutoDisclose(false);
     }
+  }
+
+  if (loadingPair) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Text style={styles.backText}>← Back</Text>
+        </TouchableOpacity>
+        <View style={styles.loadingState}>
+          <ActivityIndicator size="large" color="#4A90D9" />
+        </View>
+      </SafeAreaView>
+    );
   }
 
   return (
@@ -148,33 +168,51 @@ export default function ContactDetailScreen({ route }: Props) {
         {/* Auto-disclosure */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Auto-disclose after</Text>
-          <Text style={styles.sectionSubtitle}>
-            {monitoredHasConsented
-              ? `${contactName} has enabled auto-disclosure`
-              : `${contactName} has not yet enabled auto-disclosure`}
-          </Text>
-          <View style={styles.optionRow}>
-            {AUTO_DISCLOSE_OPTIONS.map((opt) => (
+
+          {isFreePlan ? (
+            <View style={styles.lockedBlock}>
+              <Text style={styles.lockedIcon}>🔒</Text>
+              <Text style={styles.lockedText}>
+                Auto-disclosure is a Family plan feature.
+              </Text>
               <TouchableOpacity
-                key={opt.value}
-                style={[
-                  styles.optionChip,
-                  currentAutoH === opt.value && styles.optionChipActive,
-                ]}
-                onPress={() => handleAutoDisclosureChange(opt.value)}
-                disabled={savingAutoDisclose}
+                style={styles.upgradeLink}
+                onPress={() => navigation.navigate('SubscriptionPlans')}
               >
-                <Text
-                  style={[
-                    styles.optionChipText,
-                    currentAutoH === opt.value && styles.optionChipTextActive,
-                  ]}
-                >
-                  {opt.label}
-                </Text>
+                <Text style={styles.upgradeLinkText}>Upgrade to Family →</Text>
               </TouchableOpacity>
-            ))}
-          </View>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.sectionSubtitle}>
+                {monitoredHasConsented
+                  ? `${contactName} has enabled auto-disclosure`
+                  : `${contactName} has not yet enabled auto-disclosure`}
+              </Text>
+              <View style={styles.optionRow}>
+                {AUTO_DISCLOSE_OPTIONS.map((opt) => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[
+                      styles.optionChip,
+                      currentAutoH === opt.value && styles.optionChipActive,
+                    ]}
+                    onPress={() => handleAutoDisclosureChange(opt.value)}
+                    disabled={savingAutoDisclose}
+                  >
+                    <Text
+                      style={[
+                        styles.optionChipText,
+                        currentAutoH === opt.value && styles.optionChipTextActive,
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          )}
         </View>
 
         {/* 7-day timeline */}
@@ -192,6 +230,11 @@ export default function ContactDetailScreen({ route }: Props) {
                   <Text style={styles.timelineText}>
                     Location request — {req.status.replace('_', ' ')}
                   </Text>
+                  {req.locationType === 'unavailable' && (
+                    <Text style={styles.unavailableText}>
+                      Auto-disclosure triggered but no location was available on {contactName}'s phone.
+                    </Text>
+                  )}
                   <Text style={styles.timelineTime}>
                     {req.requestedAt ? formatTimeAgo(req.requestedAt) : ''}
                   </Text>
@@ -209,6 +252,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F7FA' },
   backBtn: { paddingHorizontal: 16, paddingVertical: 10 },
   backText: { color: '#4A90D9', fontSize: 16 },
+  loadingState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { padding: 16, paddingBottom: 40 },
   hero: { alignItems: 'center', paddingVertical: 20 },
   avatar: { fontSize: 64, marginBottom: 8 },
@@ -251,6 +295,15 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 16, fontWeight: '600', color: '#1A1A2E', marginBottom: 4 },
   sectionSubtitle: { fontSize: 13, color: '#666', marginBottom: 12 },
+  lockedBlock: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    gap: 6,
+  },
+  lockedIcon: { fontSize: 24 },
+  lockedText: { fontSize: 14, color: '#888', textAlign: 'center' },
+  upgradeLink: { marginTop: 4 },
+  upgradeLinkText: { fontSize: 14, color: '#4A90D9', fontWeight: '600' },
   optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   optionChip: {
     paddingHorizontal: 14,
@@ -273,5 +326,6 @@ const styles = StyleSheet.create({
   timelineIcon: { fontSize: 18, width: 24, textAlign: 'center' },
   timelineBody: { flex: 1 },
   timelineText: { fontSize: 14, color: '#333' },
+  unavailableText: { fontSize: 12, color: '#E65100', marginTop: 2, lineHeight: 16 },
   timelineTime: { fontSize: 12, color: '#888', marginTop: 2 },
 });

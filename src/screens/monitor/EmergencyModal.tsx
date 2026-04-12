@@ -10,12 +10,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MonitorStackParamList } from '../../navigation/types';
 import { useAuthStore } from '../../stores/authStore';
+import { useSubscriptionStore } from '../../stores/subscriptionStore';
+import { PlanTier } from '../../types/enums';
 import { createLocationRequest } from '../../services/firestore';
 
 type Props = NativeStackScreenProps<MonitorStackParamList, 'EmergencyModal'>;
+type Nav = NativeStackNavigationProp<MonitorStackParamList>;
 
 const TIMEOUT_OPTIONS = [
   { label: 'Never', hours: 0 },
@@ -28,10 +31,13 @@ const TIMEOUT_OPTIONS = [
 export default function EmergencyModal({ route }: Props) {
   const { monitoredId, contactName } = route.params;
   const { currentUser } = useAuthStore();
-  const navigation = useNavigation();
+  const { plan } = useSubscriptionStore();
+  const navigation = useNavigation<Nav>();
   const [message, setMessage] = useState('');
   const [autoTimeoutHours, setAutoTimeoutHours] = useState(0);
   const [loading, setLoading] = useState(false);
+
+  const isFreePlan = plan === PlanTier.Free;
 
   async function handleSend() {
     if (!currentUser?.uid) return;
@@ -84,24 +90,43 @@ export default function EmergencyModal({ route }: Props) {
           textAlignVertical="top"
         />
 
-        <Text style={styles.label}>
-          Auto-share last location if no response after
-        </Text>
-        <Text style={styles.hint}>
-          If {contactName} has pre-consented to auto-disclosure, their last known location will be
-          shared automatically after this time.
-        </Text>
+        <Text style={styles.label}>Auto-share last location if no response after</Text>
 
-        {TIMEOUT_OPTIONS.map((opt) => (
-          <TouchableOpacity
-            key={opt.hours}
-            style={[styles.radioRow, autoTimeoutHours === opt.hours && styles.radioRowActive]}
-            onPress={() => setAutoTimeoutHours(opt.hours)}
-          >
-            <View style={[styles.radio, autoTimeoutHours === opt.hours && styles.radioFilled]} />
-            <Text style={styles.radioLabel}>{opt.label}</Text>
-          </TouchableOpacity>
-        ))}
+        {isFreePlan ? (
+          <View style={styles.lockedBlock}>
+            <Text style={styles.lockedIcon}>🔒</Text>
+            <Text style={styles.lockedText}>
+              Auto-timeout is a Family plan feature. Upgrade to automatically share{' '}
+              {contactName}'s last known location if they don't respond.
+            </Text>
+            <TouchableOpacity
+              style={styles.upgradeLink}
+              onPress={() => {
+                navigation.goBack();
+                navigation.navigate('SubscriptionPlans');
+              }}
+            >
+              <Text style={styles.upgradeLinkText}>Upgrade to Family →</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            <Text style={styles.hint}>
+              If {contactName} has pre-consented to auto-disclosure, their last known location will be
+              shared automatically after this time.
+            </Text>
+            {TIMEOUT_OPTIONS.map((opt) => (
+              <TouchableOpacity
+                key={opt.hours}
+                style={[styles.radioRow, autoTimeoutHours === opt.hours && styles.radioRowActive]}
+                onPress={() => setAutoTimeoutHours(opt.hours)}
+              >
+                <View style={[styles.radio, autoTimeoutHours === opt.hours && styles.radioFilled]} />
+                <Text style={styles.radioLabel}>{opt.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </>
+        )}
 
         <TouchableOpacity
           style={[styles.sendBtn, loading && styles.sendBtnDisabled]}
@@ -143,6 +168,18 @@ const styles = StyleSheet.create({
     minHeight: 100,
     color: '#1A1A2E',
   },
+  lockedBlock: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 10,
+    padding: 16,
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  lockedIcon: { fontSize: 24 },
+  lockedText: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 20 },
+  upgradeLink: { marginTop: 4 },
+  upgradeLinkText: { fontSize: 14, color: '#4A90D9', fontWeight: '600' },
   radioRow: {
     flexDirection: 'row',
     alignItems: 'center',

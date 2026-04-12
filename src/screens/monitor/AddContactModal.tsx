@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   ScrollView,
   Share,
@@ -11,19 +12,39 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '../../stores/authStore';
-import { createMonitoringPair } from '../../services/firestore';
+import { useSubscriptionStore } from '../../stores/subscriptionStore';
+import { createMonitoringPair, subscribeMonitoringPairs } from '../../services/firestore';
+import type { MonitorStackParamList } from '../../navigation/types';
+import { PlanTier } from '../../types/enums';
 
 const RELATIONSHIPS = ['Partner', 'Parent', 'Child', 'Sibling', 'Friend', 'Other'];
 const EMOJIS = ['👤', '❤️', '👨', '👩', '👦', '👧', '👴', '👵', '🧑', '🤝'];
 
+const FREE_CONTACT_LIMIT = 2;
+
+type Nav = NativeStackNavigationProp<MonitorStackParamList>;
+
 export default function AddContactModal() {
   const { currentUser } = useAuthStore();
-  const navigation = useNavigation();
+  const { plan } = useSubscriptionStore();
+  const navigation = useNavigation<Nav>();
   const [displayName, setDisplayName] = useState('');
   const [relationship, setRelationship] = useState(RELATIONSHIPS[0]);
   const [emoji, setEmoji] = useState(EMOJIS[0]);
   const [loading, setLoading] = useState(false);
+  const [contactCount, setContactCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    return subscribeMonitoringPairs(currentUser.uid, (pairs) => {
+      const active = pairs.filter((p) => p.status === 'active' || p.status === 'pending');
+      setContactCount(active.length);
+    });
+  }, [currentUser?.uid]);
+
+  const isAtFreeLimit = plan === PlanTier.Free && contactCount !== null && contactCount >= FREE_CONTACT_LIMIT;
 
   async function handleSendInvite() {
     if (!currentUser?.uid) return;
@@ -58,6 +79,56 @@ export default function AddContactModal() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Loading state while counting contacts
+  if (contactCount === null) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={styles.cancel}>Cancel</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Add Contact</Text>
+          <View style={{ width: 80 }} />
+        </View>
+        <View style={styles.loadingState}>
+          <ActivityIndicator size="large" color="#4A90D9" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Free plan limit gate
+  if (isAtFreeLimit) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={styles.cancel}>Cancel</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Add Contact</Text>
+          <View style={{ width: 80 }} />
+        </View>
+        <View style={styles.gateContainer}>
+          <Text style={styles.gateIcon}>🔒</Text>
+          <Text style={styles.gateTitle}>Free plan limit reached</Text>
+          <Text style={styles.gateSubtitle}>
+            You're monitoring {contactCount} of {FREE_CONTACT_LIMIT} contacts on the Free plan.
+            Upgrade to Family to monitor up to 10 people.
+          </Text>
+          <TouchableOpacity
+            style={styles.upgradeBtn}
+            onPress={() => {
+              navigation.goBack();
+              navigation.navigate('SubscriptionPlans');
+            }}
+          >
+            <Text style={styles.upgradeBtnText}>Upgrade to Family — $3.99/mo</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   return (
@@ -141,6 +212,26 @@ const styles = StyleSheet.create({
   cancel: { fontSize: 16, color: '#666' },
   sendText: { fontSize: 16, color: '#4A90D9', fontWeight: '600' },
   disabled: { opacity: 0.4 },
+  loadingState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  gateContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    gap: 12,
+  },
+  gateIcon: { fontSize: 48, marginBottom: 8 },
+  gateTitle: { fontSize: 20, fontWeight: '700', color: '#1A1A2E', textAlign: 'center' },
+  gateSubtitle: { fontSize: 15, color: '#555', textAlign: 'center', lineHeight: 22 },
+  upgradeBtn: {
+    backgroundColor: '#4A90D9',
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 8,
+    width: '100%',
+  },
+  upgradeBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   scroll: { padding: 20 },
   label: { fontSize: 14, fontWeight: '600', color: '#333', marginTop: 20, marginBottom: 10 },
   input: {

@@ -9,6 +9,8 @@ import { HEARTBEAT_TASK } from './src/constants/tasks';
 // Import task definition so it is registered before BackgroundFetch.registerTaskAsync
 import './src/tasks/heartbeat';
 import RootNavigator from './src/navigation/RootNavigator';
+import { useAuthStore } from './src/stores/authStore';
+import { useSubscriptionStore } from './src/stores/subscriptionStore';
 
 async function registerHeartbeatTask() {
   try {
@@ -38,10 +40,20 @@ async function setupPushNotifications() {
 }
 
 export default function App() {
+  const { currentUser } = useAuthStore();
+  const { configure, refreshSubscription } = useSubscriptionStore();
+
   useEffect(() => {
     registerHeartbeatTask();
     setupPushNotifications();
   }, []);
+
+  // Configure RevenueCat whenever a user logs in
+  useEffect(() => {
+    if (currentUser?.uid) {
+      configure(currentUser.uid).then(refreshSubscription);
+    }
+  }, [currentUser?.uid]);
 
   return (
     <SafeAreaProvider>

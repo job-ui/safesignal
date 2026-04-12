@@ -21,6 +21,7 @@ export type MonitorStackParamList = {
     monitoredId: string;
     contactName: string;
   };
+  SubscriptionPlans: undefined;
 };
 
 export type MonitoredStackParamList = {
@@ -33,4 +34,5 @@ export type MonitoredStackParamList = {
   LocationRequest: {
     requestId: string;
   };
+  SubscriptionPlans: undefined;
 };
