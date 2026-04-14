@@ -108,7 +108,7 @@ export default function AddContactModal() {
         await Share.share({ message: shareMessage, title: 'SafeSignal Invite' });
         navigation.goBack();
       }
-    } catch {
+    } catch (err) {
       Alert.alert('Error', 'Could not create contact. Please try again.');
     } finally {
       setLoading(false);
