@@ -53,7 +53,7 @@ export const inactivityChecker = functions
         await getMessaging().send({
           token: monitor.fcmToken,
           notification: {
-            title: `${name} has been inactive for ${hoursRounded} hour${hoursRounded !== 1 ? 's' : ''}`,
+          title: `${name} has been inactive for ${hoursRounded} hour${hoursRounded !== 1 ? 's' : ''}`,
             body: 'Tap to check in or send a location request',
           },
           data: { type: 'inactivity', pairId: pairDoc.id },

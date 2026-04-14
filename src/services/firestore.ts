@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   updateDoc,
   addDoc,
   deleteDoc,
@@ -143,6 +144,10 @@ export function subscribeMonitoredPairs(
   );
 }
 
+export async function deleteMonitoringPair(pairId: string): Promise<void> {
+  await deleteDoc(doc(db, 'monitoring_pairs', pairId));
+}
+
 // ── Last Known Location ───────────────────────────────────────────────────────
 
 export async function deleteLastKnownLocationDoc(uid: string): Promise<void> {
@@ -164,4 +169,35 @@ export async function updateUserPreferences(
   prefs: Partial<UserDocument>
 ): Promise<void> {
   await updateDoc(doc(db, 'users', uid), prefs as DocumentData);
+}
+
+export async function getUserByEmail(
+  email: string
+): Promise<(UserDocument & { id: string }) | null> {
+  const q = query(
+    collection(db, 'users'),
+    where('email', '==', email.toLowerCase().trim())
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  return { id: d.id, ...(d.data() as UserDocument) };
+}
+
+/**
+ * Called once when a user signs up. Finds any monitoring_pairs where
+ * invitedEmail matches and populates monitoredId so the consent flow
+ * triggers automatically.
+ */
+export async function claimPendingInvites(uid: string, email: string): Promise<void> {
+  const q = query(
+    collection(db, 'monitoring_pairs'),
+    where('invitedEmail', '==', email.toLowerCase().trim()),
+    where('monitoredId', '==', '')
+  );
+  const snap = await getDocs(q);
+  const updates = snap.docs.map((d) =>
+    updateDoc(d.ref, { monitoredId: uid, invitedEmail: null })
+  );
+  await Promise.all(updates);
 }

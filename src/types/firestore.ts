@@ -4,6 +4,7 @@ import { LocationType, RequestStatus, PlanTier } from './enums';
 // 1. users/{uid}
 export interface UserDocument {
   name: string;
+  email: string;
   fcmToken: string | null;
   subscriptionTier: PlanTier;
   createdAt: Timestamp;
@@ -24,6 +25,8 @@ export interface MonitoringPairDocument {
   contactName?: string;
   contactEmoji?: string;
   contactRelationship?: string;
+  // Email used to invite a not-yet-registered user; cleared once monitoredId is populated
+  invitedEmail?: string;
 }
 
 // 3. heartbeats/{uid}

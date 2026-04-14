@@ -1,11 +1,13 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as Notifications from 'expo-notifications';
 import { doc, updateDoc } from 'firebase/firestore';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { auth, db } from './src/services/auth';
-import { registerForPushNotifications } from './src/services/notifications';
+import { registerForPushNotifications, getFCMToken } from './src/services/notifications';
 import { HEARTBEAT_TASK } from './src/constants/tasks';
+import { writeHeartbeatNow } from './src/tasks/heartbeat';
 // Import task definition so it is registered before BackgroundFetch.registerTaskAsync
 import './src/tasks/heartbeat';
 import RootNavigator from './src/navigation/RootNavigator';
@@ -29,7 +31,8 @@ async function registerHeartbeatTask() {
 }
 
 async function setupPushNotifications() {
-  const token = await registerForPushNotifications();
+  await registerForPushNotifications();
+  const token = await getFCMToken();
   if (token && auth.currentUser) {
     try {
       await updateDoc(doc(db, 'users', auth.currentUser.uid), { fcmToken: token });
@@ -46,7 +49,22 @@ export default function App() {
   useEffect(() => {
     registerHeartbeatTask();
     setupPushNotifications();
+    // Write heartbeat immediately when app becomes active
+    writeHeartbeatNow();
+    const subscription = AppState.addEventListener('change', (state: AppStateStatus) => {
+      if (state === 'active') {
+        writeHeartbeatNow();
+      }
+    });
+    return () => subscription.remove();
   }, []);
+
+  // Re-run push notification setup when user logs in
+  useEffect(() => {
+    if (currentUser) {
+      setupPushNotifications();
+    }
+  }, [currentUser?.uid]);
 
   // Configure RevenueCat whenever a user logs in
   useEffect(() => {

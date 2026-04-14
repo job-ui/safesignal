@@ -9,7 +9,17 @@ import {
   User,
   NextOrObserver,
 } from 'firebase/auth';
-import { getFirestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDocs,
+  updateDoc,
+  collection,
+  query,
+  where,
+  serverTimestamp,
+} from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import firebaseConfig from '../constants/firebaseConfig';
 import { PlanTier } from '../types/enums';
@@ -35,10 +45,23 @@ export async function signUpWithEmail(
   // Write user document to Firestore
   await setDoc(doc(db, 'users', credential.user.uid), {
     name: displayName,
+    email: email.toLowerCase().trim(),
     fcmToken: null,
     subscriptionTier: PlanTier.Free,
     createdAt: serverTimestamp(),
   });
+
+  // Link any pending monitoring pairs that were sent to this email before the user joined.
+  // Implemented inline here to avoid a circular import with firestore.ts.
+  const inviteQ = query(
+    collection(db, 'monitoring_pairs'),
+    where('invitedEmail', '==', email.toLowerCase().trim()),
+    where('monitoredId', '==', '')
+  );
+  const inviteSnap = await getDocs(inviteQ);
+  await Promise.all(
+    inviteSnap.docs.map((d) => updateDoc(d.ref, { monitoredId: credential.user.uid, invitedEmail: null }))
+  );
 
   await AsyncStorage.setItem(UID_STORAGE_KEY, credential.user.uid);
   return credential.user;

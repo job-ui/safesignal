@@ -10,6 +10,7 @@ interface Props {
   lastSeen: Timestamp | null;
   thresholdHours: number;
   lastSeenBadgeTime?: Timestamp | null;
+  awaitingJoin?: boolean;
   onPress: () => void;
 }
 
@@ -26,6 +27,7 @@ export default function ContactCard({
   lastSeen,
   thresholdHours,
   lastSeenBadgeTime,
+  awaitingJoin = false,
   onPress,
 }: Props) {
   const status = lastSeen ? computeStatus(lastSeen, thresholdHours) : 'danger';
@@ -37,7 +39,12 @@ export default function ContactCard({
       <View style={styles.body}>
         <Text style={styles.name}>{name}</Text>
         {relationship ? <Text style={styles.relationship}>{relationship}</Text> : null}
-        {lastSeenBadgeTime ? (
+        {awaitingJoin ? (
+          <View style={styles.awaitingBadge}>
+            <Text style={styles.awaitingText}>Waiting to join SafeSignal</Text>
+          </View>
+        ) : null}
+        {!awaitingJoin && lastSeenBadgeTime ? (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>
               Last seen • {formatTimeAgo(lastSeenBadgeTime)}
@@ -45,10 +52,17 @@ export default function ContactCard({
           </View>
         ) : null}
       </View>
-      <View style={styles.right}>
-        <View style={[styles.dot, { backgroundColor: DOT_COLORS[status] }]} />
-        <Text style={styles.timeAgo}>{timeAgo}</Text>
-      </View>
+      {awaitingJoin ? (
+        <View style={styles.right}>
+          <View style={[styles.dot, { backgroundColor: '#BDBDBD' }]} />
+          <Text style={styles.timeAgo}>Pending</Text>
+        </View>
+      ) : (
+        <View style={styles.right}>
+          <View style={[styles.dot, { backgroundColor: DOT_COLORS[status] }]} />
+          <Text style={styles.timeAgo}>{timeAgo}</Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 }
@@ -79,6 +93,15 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   badgeText: { fontSize: 12, color: '#E65100', fontWeight: '500' },
+  awaitingBadge: {
+    marginTop: 5,
+    alignSelf: 'flex-start',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  awaitingText: { fontSize: 12, color: '#757575', fontWeight: '500' },
   right: { alignItems: 'center', gap: 4, minWidth: 64 },
   dot: { width: 12, height: 12, borderRadius: 6 },
   timeAgo: { fontSize: 11, color: '#888', textAlign: 'center' },

@@ -17,6 +17,7 @@ import {
   subscribeOutgoingLocationRequests,
   subscribeMonitoringPairs,
   updateMonitoringPair,
+  deleteMonitoringPair,
 } from '../../services/firestore';
 import { computeStatus, formatTimeAgo } from '../../utils/statusCompute';
 import type { HeartbeatDocument, LocationRequestDocument, MonitoringPairDocument } from '../../types/firestore';
@@ -95,6 +96,28 @@ export default function ContactDetailScreen({ route }: Props) {
   const recentRequests = locationRequests.filter(
     (r) => (r.requestedAt?.toMillis() ?? 0) > sevenDaysAgo
   );
+
+  function handleDeleteContact() {
+    Alert.alert(
+      'Remove contact',
+      `Remove ${contactName} from your monitoring list? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteMonitoringPair(pairId);
+              navigation.goBack();
+            } catch {
+              Alert.alert('Error', 'Could not remove contact. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  }
 
   async function handleAutoDisclosureChange(hours: number) {
     setSavingAutoDisclose(true);
@@ -243,6 +266,11 @@ export default function ContactDetailScreen({ route }: Props) {
             ))
           )}
         </View>
+
+        {/* Remove contact */}
+        <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteContact}>
+          <Text style={styles.deleteBtnText}>Remove Contact</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -328,4 +356,15 @@ const styles = StyleSheet.create({
   timelineText: { fontSize: 14, color: '#333' },
   unavailableText: { fontSize: 12, color: '#E65100', marginTop: 2, lineHeight: 16 },
   timelineTime: { fontSize: 12, color: '#888', marginTop: 2 },
+  deleteBtn: {
+    marginTop: 8,
+    marginBottom: 16,
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FFCDD2',
+    backgroundColor: '#fff',
+  },
+  deleteBtnText: { fontSize: 15, fontWeight: '600', color: '#C62828' },
 });

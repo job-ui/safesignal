@@ -15,7 +15,11 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '../../stores/authStore';
 import { useSubscriptionStore } from '../../stores/subscriptionStore';
-import { createMonitoringPair, subscribeMonitoringPairs } from '../../services/firestore';
+import {
+  createMonitoringPair,
+  getUserByEmail,
+  subscribeMonitoringPairs,
+} from '../../services/firestore';
 import type { MonitorStackParamList } from '../../navigation/types';
 import { PlanTier } from '../../types/enums';
 
@@ -31,6 +35,7 @@ export default function AddContactModal() {
   const { plan } = useSubscriptionStore();
   const navigation = useNavigation<Nav>();
   const [displayName, setDisplayName] = useState('');
+  const [email, setEmail] = useState('');
   const [relationship, setRelationship] = useState(RELATIONSHIPS[0]);
   const [emoji, setEmoji] = useState(EMOJIS[0]);
   const [loading, setLoading] = useState(false);
@@ -55,25 +60,54 @@ export default function AddContactModal() {
 
     setLoading(true);
     try {
-      const pairId = await createMonitoringPair({
-        monitorId: currentUser.uid,
-        monitoredId: '',
-        status: 'pending',
-        threshold_hours: 24,
-        autoDisclosureEnabled: false,
-        autoDisclosureAfterH: null,
-        contactName: displayName.trim(),
-        contactEmoji: emoji,
-        contactRelationship: relationship,
-      });
+      const trimmedEmail = email.trim().toLowerCase();
 
-      const deepLink = `safesignal://consent?pairId=${pairId}`;
-      await Share.share({
-        message:
-          `${currentUser.displayName ?? 'Someone'} wants to monitor your wellbeing with SafeSignal.\n\nAccept their request: ${deepLink}`,
-        title: 'SafeSignal Invite',
-      });
-      navigation.goBack();
+      // Look up whether this person already has a SafeSignal account
+      const existingUser = trimmedEmail ? await getUserByEmail(trimmedEmail) : null;
+
+      if (existingUser) {
+        // Connected immediately — the monitored person will see the consent
+        // screen next time they open the app
+        await createMonitoringPair({
+          monitorId: currentUser.uid,
+          monitoredId: existingUser.id,
+          status: 'pending',
+          threshold_hours: 24,
+          autoDisclosureEnabled: false,
+          autoDisclosureAfterH: null,
+          contactName: displayName.trim(),
+          contactEmoji: emoji,
+          contactRelationship: relationship,
+        });
+
+        Alert.alert(
+          'Request sent',
+          `${displayName.trim()} is already on SafeSignal. They'll see your monitoring request the next time they open the app.`,
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      } else {
+        // Person not on SafeSignal yet — create a pending pair keyed by
+        // invitedEmail so it can be matched when they sign up
+        await createMonitoringPair({
+          monitorId: currentUser.uid,
+          monitoredId: '',
+          status: 'pending',
+          threshold_hours: 24,
+          autoDisclosureEnabled: false,
+          autoDisclosureAfterH: null,
+          contactName: displayName.trim(),
+          contactEmoji: emoji,
+          contactRelationship: relationship,
+          ...(trimmedEmail ? { invitedEmail: trimmedEmail } : {}),
+        });
+
+        const shareMessage = trimmedEmail
+          ? `${currentUser.displayName ?? 'Someone'} wants to monitor your wellbeing with SafeSignal.\n\nDownload SafeSignal and sign up with ${trimmedEmail} to connect automatically.`
+          : `${currentUser.displayName ?? 'Someone'} wants to monitor your wellbeing with SafeSignal.\n\nDownload SafeSignal to get started.`;
+
+        await Share.share({ message: shareMessage, title: 'SafeSignal Invite' });
+        navigation.goBack();
+      }
     } catch {
       Alert.alert('Error', 'Could not create contact. Please try again.');
     } finally {
@@ -156,6 +190,18 @@ export default function AddContactModal() {
           autoFocus
         />
 
+        <Text style={styles.label}>Their email address</Text>
+        <TextInput
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          placeholder="optional — connects instantly if they're already on SafeSignal"
+          placeholderTextColor="#aaa"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoComplete="email"
+        />
+
         <Text style={styles.label}>Relationship</Text>
         <View style={styles.chipRow}>
           {RELATIONSHIPS.map((r) => (
@@ -187,8 +233,9 @@ export default function AddContactModal() {
         <View style={styles.infoBox}>
           <Text style={styles.infoTitle}>How invites work</Text>
           <Text style={styles.infoText}>
-            We generate a unique invite link. When your contact taps it and creates an account,
-            they can review exactly what will be shared and choose to accept or decline.
+            If your contact already has SafeSignal, they'll see your request immediately.{'\n\n'}
+            If not, they'll receive a message to download the app. When they sign up with the
+            same email address, you'll be connected automatically.{'\n\n'}
             Their location is never shared unless they explicitly approve each request.
           </Text>
         </View>

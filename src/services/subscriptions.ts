@@ -2,7 +2,7 @@ import Purchases from 'react-native-purchases';
 import type { PurchasesPackage } from 'react-native-purchases';
 import { PlanTier } from '../types/enums';
 
-const REVENUECAT_IOS_KEY = 'test_vtvglOnkQCkvTBxFaJmLzuCZQjD';
+const REVENUECAT_IOS_KEY = 'appl_UgQkTHODNxwfhFaAorjFjdGlGeu';
 
 export async function configurePurchases(userId: string): Promise<void> {
   Purchases.configure({ apiKey: REVENUECAT_IOS_KEY });

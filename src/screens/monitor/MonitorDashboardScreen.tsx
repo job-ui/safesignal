@@ -53,14 +53,16 @@ export default function MonitorDashboardScreen() {
     (p) => p.status === 'active' || p.status === 'pending'
   );
 
-  const safeCount = visiblePairs.filter((p) => {
+  const joinedPairs = visiblePairs.filter((p) => !!p.monitoredId);
+
+  const safeCount = joinedPairs.filter((p) => {
     const hb = heartbeats[p.monitoredId];
     return hb ? computeStatus(hb.lastSeen, p.threshold_hours) === 'safe' : false;
   }).length;
 
-  const needCheckCount = visiblePairs.length - safeCount;
+  const needCheckCount = joinedPairs.length - safeCount;
 
-  const hasDanger = visiblePairs.some((p) => {
+  const hasDanger = joinedPairs.some((p) => {
     const hb = heartbeats[p.monitoredId];
     return !hb || computeStatus(hb.lastSeen, p.threshold_hours) === 'danger';
   });
@@ -68,7 +70,15 @@ export default function MonitorDashboardScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <Text style={styles.title}>SafeSignal</Text>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => navigation.getParent()?.getParent()?.navigate('RoleSelect' as never)}
+          >
+            <Text style={styles.switchRoleBtn}>← Switch role</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>SafeSignal</Text>
+          <View style={styles.headerSpacer} />
+        </View>
         <View style={styles.loadingState}>
           <ActivityIndicator size="large" color="#4A90D9" />
         </View>
@@ -78,7 +88,15 @@ export default function MonitorDashboardScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Text style={styles.title}>SafeSignal</Text>
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.getParent()?.getParent()?.navigate('RoleSelect' as never)}
+        >
+          <Text style={styles.switchRoleBtn}>← Switch role</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>SafeSignal</Text>
+        <View style={styles.headerSpacer} />
+      </View>
 
       <View style={styles.summaryBar}>
         <View style={[styles.chip, styles.safeChip]}>
@@ -111,6 +129,7 @@ export default function MonitorDashboardScreen() {
         }
         renderItem={({ item }) => {
           const hb = heartbeats[item.monitoredId] ?? null;
+          const awaitingJoin = !item.monitoredId;
           return (
             <ContactCard
               name={item.contactName ?? 'Pending'}
@@ -118,6 +137,7 @@ export default function MonitorDashboardScreen() {
               relationship={item.contactRelationship ?? ''}
               lastSeen={hb?.lastSeen ?? null}
               thresholdHours={item.threshold_hours}
+              awaitingJoin={awaitingJoin}
               onPress={() =>
                 navigation.navigate('ContactDetail', {
                   pairId: item.id,
@@ -142,13 +162,21 @@ export default function MonitorDashboardScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F7FA' },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#1A1A2E',
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 4,
+  },
+  switchRoleBtn: { fontSize: 14, color: '#4A90D9', fontWeight: '500', minWidth: 90 },
+  headerSpacer: { minWidth: 90 },
+  title: {
+    flex: 1,
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1A1A2E',
+    textAlign: 'center',
   },
   summaryBar: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingBottom: 8 },
   chip: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },

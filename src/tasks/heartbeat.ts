@@ -64,3 +64,20 @@ TaskManager.defineTask(HEARTBEAT_TASK, async () => {
     return BackgroundFetch.BackgroundFetchResult.Failed;
   }
 });
+
+// Foreground heartbeat — call this when app becomes active
+
+export async function writeHeartbeatNow(): Promise<void> {
+  try {
+    const uid = await AsyncStorage.getItem(UID_KEY);
+    if (!uid) return;
+    const appVersion = Constants.expoConfig?.version ?? '1.0.0';
+    await setDoc(
+      doc(db, 'heartbeats', uid),
+      { lastSeen: serverTimestamp(), appVersion },
+      { merge: true }
+    );
+  } catch {
+    // Silently fail — never crash the app over a heartbeat
+  }
+}

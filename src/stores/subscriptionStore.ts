@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import Purchases, { LOG_LEVEL } from 'react-native-purchases';
 import { PlanTier } from '../types/enums';
 
-const REVENUECAT_IOS_KEY = 'test_vtvglOnkQCkvTBxFaJmLzuCZQjD';
+const REVENUECAT_IOS_KEY = 'appl_UgQkTHODNxwfhFaAorjFjdGlGeu';
 
 interface SubscriptionState {
   plan: PlanTier;

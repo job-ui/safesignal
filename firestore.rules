@@ -4,14 +4,19 @@ service cloud.firestore {
 
     // ── users/{uid} ───────────────────────────────────────────────────────────
     match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid;
     }
 
     // ── monitoring_pairs/{pairId} ─────────────────────────────────────────────
     match /monitoring_pairs/{pairId} {
-      allow read: if request.auth != null &&
-        (request.auth.uid == resource.data.monitorId ||
-         request.auth.uid == resource.data.monitoredId);
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.monitorId ||
+        request.auth.uid == resource.data.monitoredId ||
+        // Allow a newly registered user to read a pair sent to their email
+        (resource.data.invitedEmail != null &&
+         request.auth.token.email == resource.data.invitedEmail)
+      );
 
       allow create: if request.auth != null &&
         request.auth.uid == request.resource.data.monitorId;
@@ -20,8 +25,16 @@ service cloud.firestore {
         request.auth.uid == resource.data.monitorId ||
         (request.auth.uid == resource.data.monitoredId &&
          request.resource.data.diff(resource.data).affectedKeys()
-           .hasOnly(['status', 'consentAt', 'monitoredConsentedAt']))
+           .hasOnly(['status', 'consentAt', 'monitoredConsentedAt'])) ||
+        // Allow the invited user to claim the pair by populating monitoredId
+        (resource.data.invitedEmail != null &&
+         request.auth.token.email == resource.data.invitedEmail &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['monitoredId', 'invitedEmail']))
       );
+
+      allow delete: if request.auth != null &&
+        request.auth.uid == resource.data.monitorId;
     }
 
     // ── heartbeats/{uid} ──────────────────────────────────────────────────────

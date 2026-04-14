@@ -235,7 +235,15 @@ export default function MonitoredActiveScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Text style={styles.title}>My Status</Text>
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.getParent()?.getParent()?.navigate('RoleSelect' as never)}
+        >
+          <Text style={styles.switchRoleBtn}>← Switch role</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>My Status</Text>
+        <View style={styles.headerSpacer} />
+      </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Heartbeat ring */}
@@ -362,7 +370,16 @@ export default function MonitoredActiveScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F7FA' },
-  title: { fontSize: 22, fontWeight: '700', color: '#1A1A2E', padding: 16 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  switchRoleBtn: { fontSize: 14, color: '#4A90D9', fontWeight: '500', minWidth: 90 },
+  headerSpacer: { minWidth: 90 },
+  title: { flex: 1, fontSize: 22, fontWeight: '700', color: '#1A1A2E', padding: 16, textAlign: 'center' },
   scroll: { padding: 16, paddingBottom: 40 },
 
   // Heartbeat ring

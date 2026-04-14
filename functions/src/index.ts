@@ -9,7 +9,8 @@ initializeApp();
 //     --location=europe-west1 --project=safesignal-7d538 \
 //     --member="serviceAccount:340802471906@cloudbuild.gserviceaccount.com" \
 //     --role="roles/artifactregistry.writer"
-// export { inactivityChecker } from './inactivityChecker';
-// export { locationCleanup } from './locationCleanup';
-// export { locationRequestTimeout } from './locationRequestTimeout';
-// export { inviteHandler } from './inviteHandler';
+export { inactivityChecker } from './inactivityChecker';
+export { locationCleanup } from './locationCleanup';
+export { locationRequestTimeout } from './locationRequestTimeout';
+export { inviteHandler } from './inviteHandler';
+export { silentPing } from './silentPing';
