@@ -1,11 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as Notifications from 'expo-notifications';
 import { doc, updateDoc } from 'firebase/firestore';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { auth, db } from './src/services/auth';
 import { registerForPushNotifications } from './src/services/notifications';
-import { HEARTBEAT_TASK, BACKGROUND_NOTIFICATION_TASK } from './src/tasks/heartbeat';
+import { HEARTBEAT_TASK, BACKGROUND_NOTIFICATION_TASK, writeHeartbeat } from './src/tasks/heartbeat';
 // Import task definition so it is registered before BackgroundFetch.registerTaskAsync
 import './src/tasks/heartbeat';
 import RootNavigator from './src/navigation/RootNavigator';
@@ -65,6 +66,21 @@ export default function App() {
       savePushToken(currentUser.uid);
       configure(currentUser.uid).then(refreshSubscription);
     }
+  }, [currentUser?.uid]);
+
+  // Fire a heartbeat whenever the app comes to the foreground (only while logged in)
+  const appState = useRef(AppState.currentState);
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+
+    const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
+      if (appState.current.match(/inactive|background/) && nextState === 'active') {
+        writeHeartbeat();
+      }
+      appState.current = nextState;
+    });
+
+    return () => subscription.remove();
   }, [currentUser?.uid]);
 
   return (

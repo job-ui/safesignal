@@ -22,8 +22,8 @@ export async function clearUidFromBackground(): Promise<void> {
   await AsyncStorage.removeItem(UID_KEY);
 }
 
-// Shared heartbeat write logic — used by both tasks below
-async function writeHeartbeat(): Promise<void> {
+// Shared heartbeat write logic — used by both tasks below and by foreground AppState listener
+export async function writeHeartbeat(): Promise<void> {
   const uid = await AsyncStorage.getItem(UID_KEY);
   if (!uid) return;
 
