@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   ScrollView,
   Share,
   StyleSheet,
@@ -27,6 +28,16 @@ const RELATIONSHIPS = ['Partner', 'Parent', 'Child', 'Sibling', 'Friend', 'Other
 const EMOJIS = ['👤', '❤️', '👨', '👩', '👦', '👧', '👴', '👵', '🧑', '🤝'];
 
 const FREE_CONTACT_LIMIT = 2;
+const APP_STORE_LINK = 'https://apps.apple.com/app/id6762097155';
+
+function buildInviteMessage(senderName: string, pairId?: string): string {
+  const base =
+    `${senderName} is inviting you to SafeSignal — a privacy-first app that checks you're safe without tracking your location. Download here: ${APP_STORE_LINK}`;
+  if (pairId) {
+    return `${base}\n\nAlready have the app? Tap to connect: safesignal://consent?pairId=${pairId}`;
+  }
+  return base;
+}
 
 type Nav = NativeStackNavigationProp<MonitorStackParamList>;
 
@@ -51,65 +62,119 @@ export default function AddContactModal() {
 
   const isAtFreeLimit = plan === PlanTier.Free && contactCount !== null && contactCount >= FREE_CONTACT_LIMIT;
 
-  async function handleSendInvite() {
-    if (!currentUser?.uid) return;
+  // Creates the Firestore pair and returns a share message.
+  // Returns null if the contact was already on SafeSignal (alert shown inline).
+  async function createPairAndBuildMessage(): Promise<string | null> {
+    if (!currentUser?.uid) return null;
     if (!displayName.trim()) {
       Alert.alert('Name required', 'Please enter a display name for this contact.');
-      return;
+      return null;
     }
 
+    const trimmedEmail = email.trim().toLowerCase();
+    const senderName = currentUser.displayName ?? 'Someone';
+
+    // Look up whether this person already has a SafeSignal account
+    const existingUser = trimmedEmail ? await getUserByEmail(trimmedEmail) : null;
+
+    if (existingUser) {
+      // Connected immediately — the monitored person will see the consent
+      // screen next time they open the app
+      await createMonitoringPair({
+        monitorId: currentUser.uid,
+        monitoredId: existingUser.id,
+        status: 'pending',
+        threshold_hours: 24,
+        autoDisclosureEnabled: false,
+        autoDisclosureAfterH: null,
+        contactName: displayName.trim(),
+        contactEmoji: emoji,
+        contactRelationship: relationship,
+      });
+
+      Alert.alert(
+        'Request sent',
+        `${displayName.trim()} is already on SafeSignal. They'll see your monitoring request the next time they open the app.`,
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+      return null;
+    }
+
+    // Person not on SafeSignal yet — create a pending pair keyed by
+    // invitedEmail so it can be matched when they sign up
+    const pairId = await createMonitoringPair({
+      monitorId: currentUser.uid,
+      monitoredId: '',
+      status: 'pending',
+      threshold_hours: 24,
+      autoDisclosureEnabled: false,
+      autoDisclosureAfterH: null,
+      contactName: displayName.trim(),
+      contactEmoji: emoji,
+      contactRelationship: relationship,
+      ...(trimmedEmail ? { invitedEmail: trimmedEmail } : {}),
+    });
+
+    return buildInviteMessage(senderName, pairId);
+  }
+
+  async function handleSendInvite() {
     setLoading(true);
     try {
-      const trimmedEmail = email.trim().toLowerCase();
-
-      // Look up whether this person already has a SafeSignal account
-      const existingUser = trimmedEmail ? await getUserByEmail(trimmedEmail) : null;
-
-      if (existingUser) {
-        // Connected immediately — the monitored person will see the consent
-        // screen next time they open the app
-        await createMonitoringPair({
-          monitorId: currentUser.uid,
-          monitoredId: existingUser.id,
-          status: 'pending',
-          threshold_hours: 24,
-          autoDisclosureEnabled: false,
-          autoDisclosureAfterH: null,
-          contactName: displayName.trim(),
-          contactEmoji: emoji,
-          contactRelationship: relationship,
-        });
-
-        Alert.alert(
-          'Request sent',
-          `${displayName.trim()} is already on SafeSignal. They'll see your monitoring request the next time they open the app.`,
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
-        );
-      } else {
-        // Person not on SafeSignal yet — create a pending pair keyed by
-        // invitedEmail so it can be matched when they sign up
-        await createMonitoringPair({
-          monitorId: currentUser.uid,
-          monitoredId: '',
-          status: 'pending',
-          threshold_hours: 24,
-          autoDisclosureEnabled: false,
-          autoDisclosureAfterH: null,
-          contactName: displayName.trim(),
-          contactEmoji: emoji,
-          contactRelationship: relationship,
-          ...(trimmedEmail ? { invitedEmail: trimmedEmail } : {}),
-        });
-
-        const shareMessage = trimmedEmail
-          ? `${currentUser.displayName ?? 'Someone'} wants to monitor your wellbeing with SafeSignal.\n\nDownload SafeSignal and sign up with ${trimmedEmail} to connect automatically.`
-          : `${currentUser.displayName ?? 'Someone'} wants to monitor your wellbeing with SafeSignal.\n\nDownload SafeSignal to get started.`;
-
-        await Share.share({ message: shareMessage, title: 'SafeSignal Invite' });
-        navigation.goBack();
-      }
-    } catch (err) {
+      const message = await createPairAndBuildMessage();
+      if (!message) return;
+      await Share.share({ message, title: 'Join me on SafeSignal' });
+      navigation.goBack();
+    } catch {
       Alert.alert('Error', 'Could not create contact. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleShareViaSMS() {
+    setLoading(true);
+    try {
+      const message = await createPairAndBuildMessage();
+      if (!message) return;
+      await Linking.openURL(`sms:?body=${encodeURIComponent(message)}`);
+      navigation.goBack();
+    } catch {
+      Alert.alert('Error', 'Could not open Messages. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleShareViaWhatsApp() {
+    setLoading(true);
+    try {
+      const message = await createPairAndBuildMessage();
+      if (!message) return;
+      const supported = await Linking.canOpenURL('whatsapp://send');
+      if (!supported) {
+        Alert.alert('WhatsApp not installed', 'Please install WhatsApp or use another share option.');
+        return;
+      }
+      await Linking.openURL(`whatsapp://send?text=${encodeURIComponent(message)}`);
+      navigation.goBack();
+    } catch {
+      Alert.alert('Error', 'Could not open WhatsApp. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleShareViaEmail() {
+    setLoading(true);
+    try {
+      const message = await createPairAndBuildMessage();
+      if (!message) return;
+      const subject = encodeURIComponent('Join me on SafeSignal');
+      await Linking.openURL(`mailto:?subject=${subject}&body=${encodeURIComponent(message)}`);
+      navigation.goBack();
+    } catch {
+      Alert.alert('Error', 'Could not open Mail. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -239,6 +304,34 @@ export default function AddContactModal() {
             Their location is never shared unless they explicitly approve each request.
           </Text>
         </View>
+
+        <Text style={styles.shareLabel}>Share via</Text>
+        <View style={styles.shareRow}>
+          <TouchableOpacity
+            style={[styles.shareBtn, styles.shareBtnSMS]}
+            onPress={handleShareViaSMS}
+            disabled={loading}
+          >
+            <Text style={styles.shareBtnIcon}>💬</Text>
+            <Text style={styles.shareBtnText}>SMS</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.shareBtn, styles.shareBtnWhatsApp]}
+            onPress={handleShareViaWhatsApp}
+            disabled={loading}
+          >
+            <Text style={styles.shareBtnIcon}>📱</Text>
+            <Text style={styles.shareBtnText}>WhatsApp</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.shareBtn, styles.shareBtnEmail]}
+            onPress={handleShareViaEmail}
+            disabled={loading}
+          >
+            <Text style={styles.shareBtnIcon}>✉️</Text>
+            <Text style={styles.shareBtnText}>Email</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -319,4 +412,29 @@ const styles = StyleSheet.create({
   },
   infoTitle: { fontSize: 14, fontWeight: '600', color: '#1A4C8B', marginBottom: 6 },
   infoText: { fontSize: 13, color: '#1A4C8B', lineHeight: 19 },
+  shareLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  shareRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 32,
+  },
+  shareBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 4,
+  },
+  shareBtnSMS: { backgroundColor: '#34C759' },
+  shareBtnWhatsApp: { backgroundColor: '#25D366' },
+  shareBtnEmail: { backgroundColor: '#4A90D9' },
+  shareBtnIcon: { fontSize: 20 },
+  shareBtnText: { fontSize: 13, fontWeight: '600', color: '#fff' },
 });
