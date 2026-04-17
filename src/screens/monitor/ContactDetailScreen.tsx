@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   ScrollView,
   StyleSheet,
   Text,
@@ -261,6 +262,19 @@ export default function ContactDetailScreen({ route }: Props) {
                   <Text style={styles.timelineTime}>
                     {req.requestedAt ? formatTimeAgo(req.requestedAt) : ''}
                   </Text>
+                  {(req.status === 'approved' || req.status === 'auto_resolved') &&
+                    req.location != null && (
+                      <TouchableOpacity
+                        style={styles.viewLocationBtn}
+                        onPress={() =>
+                          Linking.openURL(
+                            `https://maps.apple.com/?q=${req.location!.latitude},${req.location!.longitude}`
+                          )
+                        }
+                      >
+                        <Text style={styles.viewLocationBtnText}>📍 View Location</Text>
+                      </TouchableOpacity>
+                    )}
                 </View>
               </View>
             ))
@@ -356,6 +370,17 @@ const styles = StyleSheet.create({
   timelineText: { fontSize: 14, color: '#333' },
   unavailableText: { fontSize: 12, color: '#E65100', marginTop: 2, lineHeight: 16 },
   timelineTime: { fontSize: 12, color: '#888', marginTop: 2 },
+  viewLocationBtn: {
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: '#EBF3FD',
+    borderWidth: 1,
+    borderColor: '#4A90D9',
+  },
+  viewLocationBtnText: { fontSize: 13, fontWeight: '600', color: '#4A90D9' },
   deleteBtn: {
     marginTop: 8,
     marginBottom: 16,
