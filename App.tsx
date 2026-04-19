@@ -68,10 +68,14 @@ export default function App() {
     }
   }, [currentUser?.uid]);
 
-  // Fire a heartbeat whenever the app comes to the foreground (only while logged in)
+  // Fire a heartbeat on cold start and whenever the app returns to the foreground
   const appState = useRef(AppState.currentState);
   useEffect(() => {
     if (!currentUser?.uid) return;
+
+    // Cold start: AppState is already 'active' so the change listener never fires.
+    // Write immediately once we know the user is logged in.
+    writeHeartbeat();
 
     const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
       if (appState.current.match(/inactive|background/) && nextState === 'active') {

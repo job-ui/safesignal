@@ -322,4 +322,37 @@ else
   echo ""
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────
+# MANUAL TESTING CHECKLIST
+# ─────────────────────────────────────────────────────────────────────────────
+echo -e "\n${YELLOW}${BOLD}╔══════════════════════════════════════════════════════════════════════╗${RESET}"
+echo -e "${YELLOW}${BOLD}║   MANUAL TESTING CHECKLIST — run these on a real device             ║${RESET}"
+echo -e "${YELLOW}${BOLD}║                             before every build                       ║${RESET}"
+echo -e "${YELLOW}${BOLD}╚══════════════════════════════════════════════════════════════════════╝${RESET}"
+echo ""
+echo -e "  [ ] 1. COLD START HEARTBEAT: Force-close the app completely. Open it. Wait"
+echo -e "         10 seconds. Check Firestore → heartbeats → your UID → did lastSeen"
+echo -e "         update?"
+echo ""
+echo -e "  [ ] 2. BACKGROUND HEARTBEAT: Put app in background for 1 minute. Reopen it."
+echo -e "         Check Firestore → did lastSeen update?"
+echo ""
+echo -e "  [ ] 3. LOGIN PERSISTENCE: Force-close app. Reopen. Does it go straight to"
+echo -e "         dashboard without asking to log in?"
+echo ""
+echo -e "  [ ] 4. CONTACT VISIBLE: Open monitor dashboard. Are your test contacts"
+echo -e "         showing with a recent timestamp?"
+echo ""
+echo -e "  [ ] 5. LOCATION REQUEST: Send a location request to a test contact. Do they"
+echo -e "         receive a notification? When they approve, does a View Location button"
+echo -e "         appear for you?"
+echo ""
+echo -e "  [ ] 6. FCM TOKEN: Check Firestore → users → your UID → is fcmToken NOT null?"
+echo ""
+echo -e "  [ ] 7. INVITE FLOW: Tap Add Contact → Send Invite. Do the SMS, WhatsApp and"
+echo -e "         Email buttons appear and open correctly?"
+echo ""
+echo -e "${YELLOW}${BOLD}  Do not submit a build until all 7 manual checks pass.${RESET}"
+echo ""
+
 exit "$ISSUES"
