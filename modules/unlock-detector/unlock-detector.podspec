@@ -7,9 +7,9 @@ Pod::Spec.new do |s|
   s.version        = package['version']
   s.summary        = package['description']
   s.description    = package['description']
-  s.license        = {}
-  s.author         = {}
-  s.homepage       = ''
+  s.license        = { :type => "MIT" }
+  s.authors        = { "SafeSignal" => "job@stoplar.com" }
+  s.homepage       = "https://github.com/job-ui/safesignal"
   s.platform       = :ios, '15.1'
   s.swift_version  = '5.4'
   s.source         = { git: '' }
