@@ -1,0 +1,7 @@
+{
+  "platforms": ["apple"],
+  "apple": {
+    "podspecPath": "./unlock-detector.podspec",
+    "modules": ["UnlockDetectorModule"]
+  }
+}

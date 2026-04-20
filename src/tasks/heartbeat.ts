@@ -6,6 +6,7 @@ import { doc, setDoc, serverTimestamp, GeoPoint } from 'firebase/firestore';
 import Constants from 'expo-constants';
 import { db } from '../services/auth';
 import { HEARTBEAT_TASK } from '../constants/tasks';
+export { HEARTBEAT_TASK };
 
 const UID_KEY = 'safesignal_uid';
 const PREFS_KEY = 'safesignal_prefs';

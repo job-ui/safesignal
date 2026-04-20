@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import { ProtectedDataIOS } from 'react-native-protected-data-ios';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as Notifications from 'expo-notifications';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -10,6 +9,9 @@ import { registerForPushNotifications } from './src/services/notifications';
 import { HEARTBEAT_TASK, BACKGROUND_NOTIFICATION_TASK, writeHeartbeat } from './src/tasks/heartbeat';
 // Import task definition so it is registered before BackgroundFetch.registerTaskAsync
 import './src/tasks/heartbeat';
+import { addUnlockListener } from './modules/unlock-detector/src/UnlockDetectorModule';
+// Register at module scope so it fires even when React is suspended
+addUnlockListener(() => { writeHeartbeat(); });
 import RootNavigator from './src/navigation/RootNavigator';
 import { useAuthStore } from './src/stores/authStore';
 import { useSubscriptionStore } from './src/stores/subscriptionStore';
@@ -83,17 +85,6 @@ export default function App() {
         writeHeartbeat();
       }
       appState.current = nextState;
-    });
-
-    return () => subscription.remove();
-  }, [currentUser?.uid]);
-
-  // Fire a heartbeat when the phone is unlocked (iOS protected data becomes available)
-  useEffect(() => {
-    if (!currentUser?.uid) return;
-
-    const subscription = ProtectedDataIOS.addListener('didBecomeAvailable', () => {
-      writeHeartbeat();
     });
 
     return () => subscription.remove();
