@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
+import { ProtectedDataIOS } from 'react-native-protected-data-ios';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as Notifications from 'expo-notifications';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -82,6 +83,17 @@ export default function App() {
         writeHeartbeat();
       }
       appState.current = nextState;
+    });
+
+    return () => subscription.remove();
+  }, [currentUser?.uid]);
+
+  // Fire a heartbeat when the phone is unlocked (iOS protected data becomes available)
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+
+    const subscription = ProtectedDataIOS.addListener('didBecomeAvailable', () => {
+      writeHeartbeat();
     });
 
     return () => subscription.remove();
