@@ -17,6 +17,7 @@ export const inactivityChecker = functions
     const tasks = pairsSnap.docs.map(async (pairDoc) => {
       const pair = pairDoc.data() as MonitoringPairDocument;
       const { monitorId, monitoredId, threshold_hours, contactName, sentAlertAt } = pair;
+      const effectiveThreshold = threshold_hours ?? 12;
 
       if (!monitoredId) return; // Pair not yet accepted
 
@@ -28,12 +29,12 @@ export const inactivityChecker = functions
       const lastSeenMs = heartbeat.lastSeen?.toMillis() ?? 0;
       const hoursAgo = (now - lastSeenMs) / 3_600_000;
 
-      if (hoursAgo < threshold_hours) return;
+      if (hoursAgo < effectiveThreshold) return;
 
       // Avoid repeat alerts within threshold_hours / 2
       if (sentAlertAt) {
         const hoursSinceSent = (now - sentAlertAt.toMillis()) / 3_600_000;
-        if (hoursSinceSent < threshold_hours / 2) return;
+        if (hoursSinceSent < effectiveThreshold / 2) return;
       }
 
       // Get monitor's FCM token

@@ -37,6 +37,13 @@ const AUTO_DISCLOSE_OPTIONS = [
   { label: '12h', value: 12 },
 ];
 
+const INACTIVITY_THRESHOLD_OPTIONS = [
+  { label: '6h', value: 6 },
+  { label: '12h', value: 12 },
+  { label: '24h', value: 24 },
+  { label: '48h', value: 48 },
+];
+
 const STATUS_LABELS = { safe: 'Safe', warn: 'Check in', danger: 'Needs attention' } as const;
 const STATUS_COLORS = { safe: '#4CAF50', warn: '#FF9800', danger: '#F44336' } as const;
 
@@ -61,6 +68,7 @@ export default function ContactDetailScreen({ route }: Props) {
   >([]);
   const [loadingPair, setLoadingPair] = useState(true);
   const [savingAutoDisclose, setSavingAutoDisclose] = useState(false);
+  const [savingThreshold, setSavingThreshold] = useState(false);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -90,6 +98,7 @@ export default function ContactDetailScreen({ route }: Props) {
   const contactName = pair?.contactName ?? 'Contact';
   const contactEmoji = pair?.contactEmoji ?? '👤';
   const currentAutoH = pair?.autoDisclosureAfterH ?? 0;
+  const currentThresholdH = pair?.threshold_hours ?? 12;
   const monitoredHasConsented = pair?.monitoredConsentedAt != null;
   const isFreePlan = plan === PlanTier.Free;
 
@@ -118,6 +127,17 @@ export default function ContactDetailScreen({ route }: Props) {
         },
       ]
     );
+  }
+
+  async function handleThresholdChange(hours: number) {
+    setSavingThreshold(true);
+    try {
+      await updateMonitoringPair(pairId, { threshold_hours: hours });
+    } catch {
+      Alert.alert('Error', 'Could not update inactivity threshold.');
+    } finally {
+      setSavingThreshold(false);
+    }
   }
 
   async function handleAutoDisclosureChange(hours: number) {
@@ -236,6 +256,51 @@ export default function ContactDetailScreen({ route }: Props) {
                 ))}
               </View>
             </>
+          )}
+        </View>
+
+        {/* Inactivity threshold */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Inactivity alert after</Text>
+          <Text style={styles.sectionSubtitle}>
+            Alert me if {contactName} hasn't used their phone for this long
+          </Text>
+          {isFreePlan ? (
+            <View style={styles.lockedBlock}>
+              <Text style={styles.lockedIcon}>🔒</Text>
+              <Text style={styles.lockedText}>
+                Custom thresholds are a Family plan feature. Free plan uses 12h.
+              </Text>
+              <TouchableOpacity
+                style={styles.upgradeLink}
+                onPress={() => navigation.navigate('SubscriptionPlans')}
+              >
+                <Text style={styles.upgradeLinkText}>Upgrade to Family →</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.optionRow}>
+              {INACTIVITY_THRESHOLD_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[
+                    styles.optionChip,
+                    currentThresholdH === opt.value && styles.optionChipActive,
+                  ]}
+                  onPress={() => handleThresholdChange(opt.value)}
+                  disabled={savingThreshold}
+                >
+                  <Text
+                    style={[
+                      styles.optionChipText,
+                      currentThresholdH === opt.value && styles.optionChipTextActive,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           )}
         </View>
 

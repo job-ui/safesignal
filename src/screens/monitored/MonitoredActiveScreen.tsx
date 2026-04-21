@@ -22,6 +22,12 @@ import {
   deleteLastKnownLocationDoc,
 } from '../../services/firestore';
 import { setLocationSharingPrefs, getLocationSharingPrefs } from '../../services/location';
+import {
+  getLocationPermissionLevel,
+  requestLocationPermissions,
+  type LocationPermissionLevel,
+} from '../../services/locationPermission';
+import { startLocationHeartbeat } from '../../tasks/locationHeartbeat';
 import { useAuthStore } from '../../stores/authStore';
 import type { MonitoringPairDocument, LocationRequestDocument } from '../../types/firestore';
 import type { MonitoredStackParamList } from '../../navigation/types';
@@ -37,6 +43,8 @@ export default function MonitoredActiveScreen() {
     Array<LocationRequestDocument & { id: string }>
   >([]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [locationPermission, setLocationPermission] = useState<LocationPermissionLevel | null>(null);
+  const [requestingPermission, setRequestingPermission] = useState(false);
 
   // Track which pair/request IDs we have already navigated to, to prevent re-navigation
   const navigatedConsent = useRef<Set<string>>(new Set());
@@ -77,6 +85,11 @@ export default function MonitoredActiveScreen() {
     );
     animation.start();
     return () => animation.stop();
+  }, []);
+
+  // Check location permission level on mount
+  useEffect(() => {
+    getLocationPermissionLevel().then(setLocationPermission);
   }, []);
 
   // Subscribe to pairs where this user is the monitored person
@@ -120,6 +133,21 @@ export default function MonitoredActiveScreen() {
   }, [pendingRequests]);
 
   const activePairs = pairs.filter((p) => p.status === 'active');
+
+  async function handleEnableBackgroundMonitoring() {
+    setRequestingPermission(true);
+    try {
+      const level = await requestLocationPermissions();
+      setLocationPermission(level);
+      if (level === 'always') {
+        await startLocationHeartbeat();
+      }
+    } catch {
+      Alert.alert('Error', 'Could not request location permissions.');
+    } finally {
+      setRequestingPermission(false);
+    }
+  }
 
   async function handleAutoDisclosureToggle(pair: MonitoringPairDocument & { id: string }, value: boolean) {
     if (value) {
@@ -264,6 +292,26 @@ export default function MonitoredActiveScreen() {
             Your heartbeat is being sent every 15 minutes
           </Text>
         </View>
+
+        {/* Background monitoring permission banner */}
+        {locationPermission !== null && locationPermission !== 'always' && (
+          <View style={styles.permissionBanner}>
+            <Text style={styles.permissionBannerTitle}>Enable background monitoring</Text>
+            <Text style={styles.permissionBannerBody}>
+              Allow SafeSignal to use your location in the background to send a heartbeat even when
+              the app is closed. No location coordinates are stored — only your last-active time.
+            </Text>
+            <TouchableOpacity
+              style={styles.permissionBannerBtn}
+              onPress={handleEnableBackgroundMonitoring}
+              disabled={requestingPermission}
+            >
+              <Text style={styles.permissionBannerBtnText}>
+                {requestingPermission ? 'Requesting…' : 'Enable Background Monitoring'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Pending location requests banner */}
         {pendingRequests.length > 0 && (
@@ -414,6 +462,26 @@ const styles = StyleSheet.create({
   ringEmoji: { fontSize: 28 },
   ringLabel: { fontSize: 13, color: '#fff', fontWeight: '600', marginTop: 2 },
   ringCaption: { fontSize: 13, color: '#666', textAlign: 'center' },
+
+  // Background permission banner
+  permissionBanner: {
+    backgroundColor: '#EBF3FD',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 14,
+    borderLeftWidth: 3,
+    borderLeftColor: '#4A90D9',
+  },
+  permissionBannerTitle: { fontSize: 14, fontWeight: '700', color: '#1A1A2E', marginBottom: 4 },
+  permissionBannerBody: { fontSize: 13, color: '#555', lineHeight: 18, marginBottom: 10 },
+  permissionBannerBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#4A90D9',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  permissionBannerBtnText: { fontSize: 13, fontWeight: '600', color: '#fff' },
 
   // Pending requests banner
   pendingBanner: {

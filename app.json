@@ -41,14 +41,18 @@
       },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "SafeSignal reads your cached location to share with your emergency contacts if you don't respond to a request.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "SafeSignal uses your location in the background to send a heartbeat signal so your family knows you're safe. No location coordinates are stored — only the timestamp of your last activity.",
+        "NSLocationAlwaysUsageDescription": "SafeSignal uses your location in the background to send a heartbeat signal so your family knows you're safe. No location coordinates are stored — only the timestamp of your last activity.",
         "NSUserNotificationsUsageDescription": "SafeSignal sends you alerts when your contacts are inactive or request your location.",
         "BGTaskSchedulerPermittedIdentifiers": [
-          "com.safesignal.heartbeat"
+          "com.safesignal.heartbeat",
+          "com.safesignal.location-heartbeat"
         ],
         "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": [
           "fetch",
-          "remote-notification"
+          "remote-notification",
+          "location"
         ]
       }
     },
@@ -69,6 +73,15 @@
         {
           "icon": "./assets/icon.png",
           "color": "#ffffff"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "SafeSignal uses your location in the background to send a heartbeat signal so your family knows you're safe. No location coordinates are stored — only the timestamp of your last activity.",
+          "locationAlwaysPermission": "SafeSignal uses your location in the background to send a heartbeat signal so your family knows you're safe. No location coordinates are stored — only the timestamp of your last activity.",
+          "locationWhenInUsePermission": "SafeSignal reads your cached location to share with your emergency contacts if you don't respond to a request.",
+          "isIosBackgroundLocationEnabled": true
         }
       ]
     ],

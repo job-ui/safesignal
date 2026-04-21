@@ -7,8 +7,11 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { auth, db } from './src/services/auth';
 import { registerForPushNotifications } from './src/services/notifications';
 import { HEARTBEAT_TASK, BACKGROUND_NOTIFICATION_TASK, writeHeartbeat } from './src/tasks/heartbeat';
-// Import task definition so it is registered before BackgroundFetch.registerTaskAsync
+// Import task definitions so they are registered before any async call
 import './src/tasks/heartbeat';
+import './src/tasks/locationHeartbeat';
+import { startLocationHeartbeat, isLocationHeartbeatRunning } from './src/tasks/locationHeartbeat';
+import { getLocationPermissionLevel } from './src/services/locationPermission';
 import { addUnlockListener } from './modules/unlock-detector/src/UnlockDetectorModule';
 // Register at module scope so it fires even when React is suspended
 addUnlockListener(() => { writeHeartbeat(); });
@@ -40,6 +43,17 @@ async function registerBackgroundNotificationTask() {
   }
 }
 
+async function resumeLocationHeartbeatIfPermitted(): Promise<void> {
+  try {
+    const level = await getLocationPermissionLevel();
+    if (level !== 'always') return;
+    const running = await isLocationHeartbeatRunning();
+    if (!running) await startLocationHeartbeat();
+  } catch {
+    // Permission not yet granted or task failed — non-fatal
+  }
+}
+
 // Save the push token now that we know the user is logged in
 async function savePushToken(uid: string) {
   const token = await registerForPushNotifications();
@@ -56,10 +70,11 @@ export default function App() {
   const { currentUser } = useAuthStore();
   const { configure, refreshSubscription } = useSubscriptionStore();
 
-  // Register background tasks once on app start
+  // Register background tasks and resume location heartbeat on app start
   useEffect(() => {
     registerHeartbeatTask();
     registerBackgroundNotificationTask();
+    resumeLocationHeartbeatIfPermitted();
   }, []);
 
   // Save push token and configure RevenueCat whenever a user logs in
@@ -68,6 +83,7 @@ export default function App() {
     if (currentUser?.uid) {
       savePushToken(currentUser.uid);
       configure(currentUser.uid).then(refreshSubscription);
+      resumeLocationHeartbeatIfPermitted();
     }
   }, [currentUser?.uid]);
 
