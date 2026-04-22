@@ -27,7 +27,8 @@ import {
   requestLocationPermissions,
   type LocationPermissionLevel,
 } from '../../services/locationPermission';
-import { startLocationHeartbeat } from '../../tasks/locationHeartbeat';
+import { startContinuousLocation } from '../../tasks/locationHeartbeat';
+import { startNativeMonitoring } from '../../../modules/location-monitor/src/LocationMonitorModule';
 import { useAuthStore } from '../../stores/authStore';
 import type { MonitoringPairDocument, LocationRequestDocument } from '../../types/firestore';
 import type { MonitoredStackParamList } from '../../navigation/types';
@@ -140,7 +141,8 @@ export default function MonitoredActiveScreen() {
       const level = await requestLocationPermissions();
       setLocationPermission(level);
       if (level === 'always') {
-        await startLocationHeartbeat();
+        await startContinuousLocation();
+        startNativeMonitoring();
       }
     } catch {
       Alert.alert('Error', 'Could not request location permissions.');

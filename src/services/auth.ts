@@ -21,6 +21,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storeUidNative, clearUidNative } from '../../modules/location-monitor/src/LocationMonitorModule';
 import firebaseConfig from '../constants/firebaseConfig';
 import { PlanTier } from '../types/enums';
 
@@ -64,17 +65,20 @@ export async function signUpWithEmail(
   );
 
   await AsyncStorage.setItem(UID_STORAGE_KEY, credential.user.uid);
+  storeUidNative(credential.user.uid);
   return credential.user;
 }
 
 export async function signInWithEmail(email: string, password: string): Promise<User> {
   const credential = await signInWithEmailAndPassword(auth, email, password);
   await AsyncStorage.setItem(UID_STORAGE_KEY, credential.user.uid);
+  storeUidNative(credential.user.uid);
   return credential.user;
 }
 
 export async function signOut(): Promise<void> {
   await AsyncStorage.removeItem(UID_STORAGE_KEY);
+  clearUidNative();
   await firebaseSignOut(auth);
 }
 
@@ -82,6 +86,7 @@ export function onAuthStateChanged(callback: NextOrObserver<User>): () => void {
   return firebaseOnAuthStateChanged(auth, async (user) => {
     if (user) {
       await AsyncStorage.setItem(UID_STORAGE_KEY, user.uid);
+      storeUidNative(user.uid);
     }
     if (typeof callback === 'function') callback(user);
   });

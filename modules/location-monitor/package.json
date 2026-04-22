@@ -1,0 +1,6 @@
+{
+  "name": "location-monitor",
+  "version": "1.0.0",
+  "description": "Native iOS location monitoring for SafeSignal",
+  "main": "src/LocationMonitorModule.ts"
+}

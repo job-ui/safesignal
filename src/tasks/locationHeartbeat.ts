@@ -1,61 +1,83 @@
-import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../services/auth';
+import { db } from '../services/auth';
+import { UID_KEY, LAST_HEARTBEAT_KEY, recordHeartbeatTime, getLastHeartbeatTime } from './heartbeat';
 import { LOCATION_HEARTBEAT_TASK } from '../constants/tasks';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const LAST_WRITE_KEY = 'safesignal_location_hb_last_write';
-const MIN_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+// Two hours — if no heartbeat in this window, continuous location kicks in
+const CONTINUOUS_TRIGGER_MS = 2 * 60 * 60 * 1000;
+// Rate limit: never write more than once per 30 minutes from continuous location
+const MIN_WRITE_INTERVAL_MS = 30 * 60 * 1000;
+let lastWriteAt = 0;
 
-// Task definition must happen at module scope so it is registered before any
-// call to Location.startLocationUpdatesAsync.
-TaskManager.defineTask(LOCATION_HEARTBEAT_TASK, async () => {
-  try {
-    const uid = auth.currentUser?.uid;
-    if (!uid) return;
+// Called by both continuous location task AND native Swift module
+export async function writeHeartbeat(source: string = 'location'): Promise<void> {
+  const uid = await AsyncStorage.getItem(UID_KEY);
+  if (!uid) return;
+  const now = Date.now();
+  if (now - lastWriteAt < MIN_WRITE_INTERVAL_MS) return;
+  lastWriteAt = now;
+  await setDoc(
+    doc(db, 'heartbeats', uid),
+    { lastSeen: serverTimestamp(), appVersion: '1.0.0', source },
+    { merge: true }
+  );
+  await recordHeartbeatTime();
+  // After writing heartbeat, stop continuous location — native monitors take over
+  await stopContinuousLocation();
+}
 
-    // Rate-limit: skip if last write was less than 5 minutes ago
-    const lastWrite = await AsyncStorage.getItem(LAST_WRITE_KEY);
-    if (lastWrite) {
-      const elapsed = Date.now() - parseInt(lastWrite, 10);
-      if (elapsed < MIN_INTERVAL_MS) return;
-    }
-
-    // Write heartbeat only — NO coordinates stored
-    await setDoc(
-      doc(db, 'heartbeats', uid),
-      { lastSeen: serverTimestamp(), appVersion: 'bg-location' },
-      { merge: true }
-    );
-
-    await AsyncStorage.setItem(LAST_WRITE_KEY, Date.now().toString());
-  } catch {
-    // Silently fail — background tasks must not throw
-  }
+// Continuous location task — fallback only, stops itself after writing
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+TaskManager.defineTask(LOCATION_HEARTBEAT_TASK, async (body: any) => {
+  if (body?.error) return;
+  await writeHeartbeat('continuous');
 });
 
-export async function isLocationHeartbeatRunning(): Promise<boolean> {
+export async function startContinuousLocation(): Promise<boolean> {
   try {
-    return await Location.hasStartedLocationUpdatesAsync(LOCATION_HEARTBEAT_TASK);
-  } catch {
+    const { status } = await Location.getBackgroundPermissionsAsync();
+    if (status !== 'granted') return false;
+    const isRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_HEARTBEAT_TASK);
+    if (isRunning) return true;
+    await Location.startLocationUpdatesAsync(LOCATION_HEARTBEAT_TASK, {
+      accuracy: Location.Accuracy.Balanced,
+      distanceInterval: 0,
+      showsBackgroundLocationIndicator: true,
+      pausesUpdatesAutomatically: false,
+      activityType: Location.ActivityType.Other,
+    });
+    return true;
+  } catch (e) {
+    console.warn('[LocationHeartbeat] Failed to start continuous:', e);
     return false;
   }
 }
 
-export async function startLocationHeartbeat(): Promise<void> {
-  if (await isLocationHeartbeatRunning()) return;
-
-  await Location.startLocationUpdatesAsync(LOCATION_HEARTBEAT_TASK, {
-    accuracy: Location.Accuracy.Balanced,
-    distanceInterval: 0,
-    showsBackgroundLocationIndicator: true,
-    pausesUpdatesAutomatically: false,
-    activityType: Location.ActivityType.Other,
-  });
+export async function stopContinuousLocation(): Promise<void> {
+  try {
+    const isRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_HEARTBEAT_TASK);
+    if (isRunning) await Location.stopLocationUpdatesAsync(LOCATION_HEARTBEAT_TASK);
+  } catch {}
 }
 
-export async function stopLocationHeartbeat(): Promise<void> {
-  if (!(await isLocationHeartbeatRunning())) return;
-  await Location.stopLocationUpdatesAsync(LOCATION_HEARTBEAT_TASK);
+// Called on app foreground and on login — starts continuous only if needed
+export async function checkAndManageContinuous(): Promise<void> {
+  const { status } = await Location.getBackgroundPermissionsAsync();
+  if (status !== 'granted') return;
+  const lastHeartbeat = await getLastHeartbeatTime();
+  const twoHoursAgo = Date.now() - CONTINUOUS_TRIGGER_MS;
+  if (lastHeartbeat < twoHoursAgo) {
+    // No heartbeat in 2+ hours — start continuous location as fallback
+    await startContinuousLocation();
+  }
+  // If heartbeat is recent, continuous stays off — native monitors handle it
+}
+
+export async function isLocationRunning(): Promise<boolean> {
+  try {
+    return await Location.hasStartedLocationUpdatesAsync(LOCATION_HEARTBEAT_TASK);
+  } catch { return false; }
 }

@@ -119,6 +119,7 @@ EXPECTED_EXPORTS=(
   "locationCleanup"
   "locationRequestTimeout"
   "inviteHandler"
+  "heartbeatHTTP"
 )
 
 if [[ ! -f "$INDEX" ]]; then
@@ -143,20 +144,16 @@ HB="src/tasks/heartbeat.ts"
 if [[ ! -f "$HB" ]]; then
   fail "src/tasks/heartbeat.ts not found"
 else
-  if grep -q "BACKGROUND_NOTIFICATION_TASK" "$HB"; then
-    if grep -qE "export\b" "$HB" && grep -qE "export.*BACKGROUND_NOTIFICATION_TASK|BACKGROUND_NOTIFICATION_TASK.*export" "$HB"; then
-      pass "BACKGROUND_NOTIFICATION_TASK is exported"
-    else
-      fail "BACKGROUND_NOTIFICATION_TASK exists but is not exported"
-    fi
+  if grep -q "storeUidForBackground" "$HB"; then
+    pass "storeUidForBackground exported in heartbeat.ts"
   else
-    fail "BACKGROUND_NOTIFICATION_TASK not found in heartbeat.ts"
+    fail "storeUidForBackground not found in heartbeat.ts"
   fi
 
-  if grep -q "writeHeartbeat" "$HB"; then
-    pass "writeHeartbeat function present in heartbeat.ts"
+  if grep -q "clearUidFromBackground" "$HB"; then
+    pass "clearUidFromBackground exported in heartbeat.ts"
   else
-    fail "writeHeartbeat not found in heartbeat.ts"
+    fail "clearUidFromBackground not found in heartbeat.ts"
   fi
 fi
 
@@ -176,10 +173,10 @@ else
     fail "AppState not found in App.tsx — foreground heartbeat trigger may be missing"
   fi
 
-  if grep -q "writeHeartbeat" "$APP"; then
-    pass "writeHeartbeat called in App.tsx"
+  if grep -q "checkAndManageContinuous" "$APP"; then
+    pass "checkAndManageContinuous called in App.tsx"
   else
-    fail "writeHeartbeat not called in App.tsx"
+    fail "checkAndManageContinuous not called in App.tsx"
   fi
 fi
 
@@ -269,6 +266,7 @@ EXPECTED_FUNCTIONS_FILES=(
   "functions/src/locationCleanup.ts"
   "functions/src/locationRequestTimeout.ts"
   "functions/src/inviteHandler.ts"
+  "functions/src/heartbeatHTTP.ts"
   "functions/src/types.ts"
 )
 

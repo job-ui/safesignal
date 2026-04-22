@@ -1,6 +1,0 @@
-{
-  "name": "unlock-detector",
-  "version": "1.0.0",
-  "description": "Native iOS unlock detection for SafeSignal",
-  "main": "src/UnlockDetectorModule.ts"
-}
