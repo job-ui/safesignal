@@ -1,19 +1,28 @@
 import { requireNativeModule } from 'expo';
 
-const LocationMonitorNative = requireNativeModule('LocationMonitor');
+let LocationMonitorNative: any = null;
+try {
+  LocationMonitorNative = requireNativeModule('LocationMonitor');
+} catch (e) {
+  console.warn('[LocationMonitor] Native module not available:', e);
+}
 
 export function startNativeMonitoring(): boolean {
-  return LocationMonitorNative.startNativeMonitoring();
+  if (!LocationMonitorNative) return false;
+  try { return LocationMonitorNative.startNativeMonitoring(); } catch { return false; }
 }
 
 export function stopNativeMonitoring(): void {
-  LocationMonitorNative.stopNativeMonitoring();
+  if (!LocationMonitorNative) return;
+  try { LocationMonitorNative.stopNativeMonitoring(); } catch {}
 }
 
 export function storeUidNative(uid: string): void {
-  LocationMonitorNative.storeUid(uid);
+  if (!LocationMonitorNative) return;
+  try { LocationMonitorNative.storeUid(uid); } catch {}
 }
 
 export function clearUidNative(): void {
-  LocationMonitorNative.clearUid();
+  if (!LocationMonitorNative) return;
+  try { LocationMonitorNative.clearUid(); } catch {}
 }
