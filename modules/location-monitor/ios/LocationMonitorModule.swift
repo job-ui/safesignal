@@ -76,6 +76,7 @@ public class LocationMonitorModule: Module {
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.setValue("ss-heartbeat-2026", forHTTPHeaderField: "x-safesignal-secret")
     request.httpBody = try? JSONSerialization.data(withJSONObject: ["uid": uid, "source": source])
     URLSession.shared.dataTask(with: request).resume()
   }
