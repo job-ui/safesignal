@@ -34,6 +34,7 @@ export default function App() {
   useEffect(() => {
     if (currentUser?.uid) {
       configure(currentUser.uid).then(refreshSubscription);
+      writeHeartbeatNow();
       checkAndManageContinuous();
     }
   }, [currentUser?.uid]);
