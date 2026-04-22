@@ -5,7 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { auth, db } from './src/services/auth';
 import { registerForPushNotifications } from './src/services/notifications';
 import './src/tasks/locationHeartbeat';
-import { checkAndManageContinuous } from './src/tasks/locationHeartbeat';
+import { checkAndManageContinuous, writeHeartbeatNow } from './src/tasks/locationHeartbeat';
 import RootNavigator from './src/navigation/RootNavigator';
 import { useAuthStore } from './src/stores/authStore';
 import { useSubscriptionStore } from './src/stores/subscriptionStore';
@@ -26,6 +26,7 @@ export default function App() {
   // On launch
   useEffect(() => {
     setupPushNotifications();
+    writeHeartbeatNow();
     checkAndManageContinuous();
   }, []);
 
@@ -40,7 +41,7 @@ export default function App() {
   // On app foreground — restart continuous if 2+ hours since last heartbeat
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') checkAndManageContinuous();
+      if (state === 'active') { writeHeartbeatNow(); checkAndManageContinuous(); }
     });
     return () => subscription.remove();
   }, []);

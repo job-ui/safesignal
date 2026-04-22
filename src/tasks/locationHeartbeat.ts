@@ -29,6 +29,23 @@ export async function writeHeartbeat(source: string = 'location'): Promise<void>
   await stopContinuousLocation();
 }
 
+// Bypasses the 30-min rate limit — for explicit foreground/launch writes
+export async function writeHeartbeatNow(): Promise<void> {
+  const uid = await AsyncStorage.getItem(UID_KEY);
+  if (!uid) return;
+  try {
+    await setDoc(
+      doc(db, 'heartbeats', uid),
+      { lastSeen: serverTimestamp(), appVersion: '1.0.0', source: 'foreground' },
+      { merge: true }
+    );
+    await recordHeartbeatTime();
+    lastWriteAt = Date.now();
+  } catch (e) {
+    console.warn('[Heartbeat] Foreground write error:', e);
+  }
+}
+
 // Continuous location task — fallback only, stops itself after writing
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 TaskManager.defineTask(LOCATION_HEARTBEAT_TASK, async (body: any) => {
