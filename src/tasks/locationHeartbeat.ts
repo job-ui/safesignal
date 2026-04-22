@@ -6,7 +6,7 @@ import { auth, db } from '../services/auth';
 import { LOCATION_HEARTBEAT_TASK } from '../constants/tasks';
 
 const LAST_WRITE_KEY = 'safesignal_location_hb_last_write';
-const MIN_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+const MIN_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 
 // Task definition must happen at module scope so it is registered before any
 // call to Location.startLocationUpdatesAsync.
@@ -47,8 +47,8 @@ export async function startLocationHeartbeat(): Promise<void> {
   if (await isLocationHeartbeatRunning()) return;
 
   await Location.startLocationUpdatesAsync(LOCATION_HEARTBEAT_TASK, {
-    accuracy: Location.Accuracy.Low,
-    distanceInterval: 10,
+    accuracy: Location.Accuracy.Balanced,
+    distanceInterval: 0,
     showsBackgroundLocationIndicator: true,
     pausesUpdatesAutomatically: false,
     activityType: Location.ActivityType.Other,

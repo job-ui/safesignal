@@ -1,12 +1,8 @@
 import * as TaskManager from 'expo-task-manager';
-import * as BackgroundFetch from 'expo-background-fetch';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, setDoc, serverTimestamp, GeoPoint } from 'firebase/firestore';
-import Constants from 'expo-constants';
 import { db } from '../services/auth';
-import { HEARTBEAT_TASK } from '../constants/tasks';
-export { HEARTBEAT_TASK };
 
 const UID_KEY = 'safesignal_uid';
 const PREFS_KEY = 'safesignal_prefs';
@@ -28,7 +24,7 @@ export async function writeHeartbeat(): Promise<void> {
   const uid = await AsyncStorage.getItem(UID_KEY);
   if (!uid) return;
 
-  const appVersion = Constants.expoConfig?.version ?? '1.0.0';
+  const appVersion = '1.0.0';
 
   // Write heartbeat timestamp
   await setDoc(
@@ -62,17 +58,7 @@ export async function writeHeartbeat(): Promise<void> {
   }
 }
 
-// ── Task 1: Background Fetch (iOS runs this occasionally on its own schedule) ──
-TaskManager.defineTask(HEARTBEAT_TASK, async () => {
-  try {
-    await writeHeartbeat();
-    return BackgroundFetch.BackgroundFetchResult.NewData;
-  } catch {
-    return BackgroundFetch.BackgroundFetchResult.Failed;
-  }
-});
-
-// ── Task 2: Background Notification (runs when our server sends a silent ping) ──
+// ── Background Notification (runs when our server sends a silent ping) ──
 // This is the reliable one — our Cloud Function wakes the phone every 15 minutes
 TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async () => {
   try {

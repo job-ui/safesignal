@@ -119,7 +119,6 @@ EXPECTED_EXPORTS=(
   "locationCleanup"
   "locationRequestTimeout"
   "inviteHandler"
-  "heartbeatPinger"
 )
 
 if [[ ! -f "$INDEX" ]]; then
@@ -270,7 +269,6 @@ EXPECTED_FUNCTIONS_FILES=(
   "functions/src/locationCleanup.ts"
   "functions/src/locationRequestTimeout.ts"
   "functions/src/inviteHandler.ts"
-  "functions/src/heartbeatPinger.ts"
   "functions/src/types.ts"
 )
 

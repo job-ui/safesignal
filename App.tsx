@@ -1,12 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import * as BackgroundFetch from 'expo-background-fetch';
 import * as Notifications from 'expo-notifications';
 import { doc, updateDoc } from 'firebase/firestore';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { auth, db } from './src/services/auth';
 import { registerForPushNotifications } from './src/services/notifications';
-import { HEARTBEAT_TASK, BACKGROUND_NOTIFICATION_TASK, writeHeartbeat } from './src/tasks/heartbeat';
+import { BACKGROUND_NOTIFICATION_TASK, writeHeartbeat } from './src/tasks/heartbeat';
 // Import task definitions so they are registered before any async call
 import './src/tasks/heartbeat';
 import './src/tasks/locationHeartbeat';
@@ -18,22 +17,6 @@ addUnlockListener(() => { writeHeartbeat(); });
 import RootNavigator from './src/navigation/RootNavigator';
 import { useAuthStore } from './src/stores/authStore';
 import { useSubscriptionStore } from './src/stores/subscriptionStore';
-
-async function registerHeartbeatTask() {
-  try {
-    const status = await BackgroundFetch.getStatusAsync();
-    const isAvailable = status === BackgroundFetch.BackgroundFetchStatus.Available;
-    if (!isAvailable) return;
-
-    await BackgroundFetch.registerTaskAsync(HEARTBEAT_TASK, {
-      minimumInterval: 900, // 15 minutes
-      stopOnTerminate: false,
-      startOnBoot: true,
-    });
-  } catch {
-    // Task may already be registered
-  }
-}
 
 async function registerBackgroundNotificationTask() {
   try {
@@ -72,7 +55,6 @@ export default function App() {
 
   // Register background tasks and resume location heartbeat on app start
   useEffect(() => {
-    registerHeartbeatTask();
     registerBackgroundNotificationTask();
     resumeLocationHeartbeatIfPermitted();
   }, []);
@@ -105,6 +87,16 @@ export default function App() {
 
     return () => subscription.remove();
   }, [currentUser?.uid]);
+
+  // Resume location heartbeat whenever app comes to foreground
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        resumeLocationHeartbeatIfPermitted();
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
   return (
     <SafeAreaProvider>
