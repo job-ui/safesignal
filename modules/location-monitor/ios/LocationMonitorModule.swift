@@ -25,7 +25,8 @@ public class LocationMonitorModule: Module {
   private var locationManager: CLLocationManager?
   private var locationDelegate: LocationDelegate?
   private let UID_KEY = "safesignal_uid"
-  private let HEARTBEAT_URL = "https://europe-west1-safesignal-7d538.cloudfunctions.net/heartbeatHTTP"
+  private let FIRESTORE_API_KEY = "AIzaSyBgg6V84ZBGjYbi_3E11XWC0Eo4_BQynXA"
+  private let FIRESTORE_PROJECT_ID = "safesignal-7d538"
 
   public func definition() -> ModuleDefinition {
     Name("LocationMonitor")
@@ -72,12 +73,19 @@ public class LocationMonitorModule: Module {
 
   private func postHeartbeat(source: String) {
     guard let uid = UserDefaults.standard.string(forKey: UID_KEY), !uid.isEmpty else { return }
-    guard let url = URL(string: HEARTBEAT_URL) else { return }
+    let urlString = "https://firestore.googleapis.com/v1/projects/\(FIRESTORE_PROJECT_ID)/databases/(default)/documents/heartbeats/\(uid)?key=\(FIRESTORE_API_KEY)"
+    guard let url = URL(string: urlString) else { return }
     var request = URLRequest(url: url)
-    request.httpMethod = "POST"
+    request.httpMethod = "PATCH"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-    request.setValue("ss-heartbeat-2026", forHTTPHeaderField: "x-safesignal-secret")
-    request.httpBody = try? JSONSerialization.data(withJSONObject: ["uid": uid, "source": source])
+    let body: [String: Any] = [
+      "fields": [
+        "lastSeen": ["timestampValue": ISO8601DateFormatter().string(from: Date())],
+        "appVersion": ["stringValue": "1.0.0"],
+        "source": ["stringValue": source]
+      ]
+    ]
+    request.httpBody = try? JSONSerialization.data(withJSONObject: body)
     URLSession.shared.dataTask(with: request).resume()
   }
 }
