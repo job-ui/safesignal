@@ -2,13 +2,28 @@ import ExpoModulesCore
 import CoreLocation
 import Foundation
 
-// Reads UID from UserDefaults (written by JS via storeUidForBackground)
+// Reads UID from UserDefaults (written by JS via storeUid).
 // When significant location change or visit fires, POSTs heartbeat directly
 // to Firebase HTTP Cloud Function — no JS bridge needed.
 // This means the heartbeat fires even when the app is terminated.
 
-public class LocationMonitorModule: Module, CLLocationManagerDelegate {
+// Separate NSObject subclass required because CLLocationManagerDelegate
+// inherits NSObjectProtocol, which Swift protocols cannot satisfy directly.
+private class LocationDelegate: NSObject, CLLocationManagerDelegate {
+  var onHeartbeat: ((String) -> Void)?
+
+  func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    onHeartbeat?("significant")
+  }
+
+  func locationManager(_ manager: CLLocationManager, didVisit visit: CLVisit) {
+    onHeartbeat?("visit")
+  }
+}
+
+public class LocationMonitorModule: Module {
   private var locationManager: CLLocationManager?
+  private var locationDelegate: LocationDelegate?
   private let UID_KEY = "safesignal_uid"
   private let HEARTBEAT_URL = "https://europe-west1-safesignal-7d538.cloudfunctions.net/heartbeatHTTP"
 
@@ -43,8 +58,14 @@ public class LocationMonitorModule: Module, CLLocationManagerDelegate {
   }
 
   private func setupLocationManager() {
+    let delegate = LocationDelegate()
+    delegate.onHeartbeat = { [weak self] source in
+      self?.postHeartbeat(source: source)
+    }
+    locationDelegate = delegate
+
     locationManager = CLLocationManager()
-    locationManager?.delegate = self
+    locationManager?.delegate = delegate
     locationManager?.allowsBackgroundLocationUpdates = true
     locationManager?.pausesLocationUpdatesAutomatically = false
   }
@@ -57,17 +78,5 @@ public class LocationMonitorModule: Module, CLLocationManagerDelegate {
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.httpBody = try? JSONSerialization.data(withJSONObject: ["uid": uid, "source": source])
     URLSession.shared.dataTask(with: request).resume()
-  }
-
-  // Significant location change fired — person moved ~500m
-  public func locationManager(_ manager: CLLocationManager,
-                               didUpdateLocations locations: [CLLocation]) {
-    postHeartbeat(source: "significant")
-  }
-
-  // Visit fired — person arrived at or left a place
-  public func locationManager(_ manager: CLLocationManager,
-                               didVisit visit: CLVisit) {
-    postHeartbeat(source: "visit")
   }
 }
