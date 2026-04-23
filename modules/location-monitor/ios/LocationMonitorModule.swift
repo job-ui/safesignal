@@ -16,9 +16,6 @@ private class LocationDelegate: NSObject, CLLocationManagerDelegate {
     onHeartbeat?("significant")
   }
 
-  func locationManager(_ manager: CLLocationManager, didVisit visit: CLVisit) {
-    onHeartbeat?("visit")
-  }
 }
 
 public class LocationMonitorModule: Module {
@@ -32,20 +29,24 @@ public class LocationMonitorModule: Module {
     Name("LocationMonitor")
 
     OnCreate {
-      self.setupLocationManager()
+      DispatchQueue.main.async {
+        self.setupLocationManager()
+      }
     }
 
     Function("startNativeMonitoring") { () -> Bool in
-      guard let manager = self.locationManager else { return false }
       guard CLLocationManager.authorizationStatus() == .authorizedAlways else { return false }
-      manager.startMonitoringSignificantLocationChanges()
-      manager.startMonitoringVisits()
+      DispatchQueue.main.async {
+        guard let manager = self.locationManager else { return }
+        manager.startMonitoringSignificantLocationChanges()
+      }
       return true
     }
 
     Function("stopNativeMonitoring") {
-      self.locationManager?.stopMonitoringSignificantLocationChanges()
-      self.locationManager?.stopMonitoringVisits()
+      DispatchQueue.main.async {
+        self.locationManager?.stopMonitoringSignificantLocationChanges()
+      }
     }
 
     Function("storeUid") { (uid: String) in
