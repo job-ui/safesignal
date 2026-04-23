@@ -70,6 +70,9 @@ public class LocationMonitorModule: Module {
     locationManager?.delegate = delegate
     locationManager?.allowsBackgroundLocationUpdates = true
     locationManager?.pausesLocationUpdatesAutomatically = false
+    if CLLocationManager.authorizationStatus() == .authorizedAlways {
+      locationManager?.startMonitoringSignificantLocationChanges()
+    }
   }
 
   private func postHeartbeat(source: String) {
