@@ -1,6 +1,7 @@
 import ExpoModulesCore
 import CoreLocation
 import Foundation
+import UIKit
 
 // Reads UID from UserDefaults (written by JS via storeUid).
 // When significant location change or visit fires, POSTs heartbeat directly
@@ -77,11 +78,23 @@ public class LocationMonitorModule: Module {
 
   private func postHeartbeat(source: String) {
     guard let uid = UserDefaults.standard.string(forKey: UID_KEY), !uid.isEmpty else { return }
+
+    var bgTask: UIBackgroundTaskIdentifier = .invalid
+    bgTask = UIApplication.shared.beginBackgroundTask(withName: "safesignal.heartbeat") {
+      UIApplication.shared.endBackgroundTask(bgTask)
+      bgTask = .invalid
+    }
+
     let urlString = "https://firestore.googleapis.com/v1/projects/\(FIRESTORE_PROJECT_ID)/databases/(default)/documents/heartbeats/\(uid)?key=\(FIRESTORE_API_KEY)"
-    guard let url = URL(string: urlString) else { return }
+    guard let url = URL(string: urlString) else {
+      UIApplication.shared.endBackgroundTask(bgTask)
+      return
+    }
+
     var request = URLRequest(url: url)
     request.httpMethod = "PATCH"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
     let body: [String: Any] = [
       "fields": [
         "lastSeen": ["timestampValue": ISO8601DateFormatter().string(from: Date())],
@@ -89,7 +102,12 @@ public class LocationMonitorModule: Module {
         "source": ["stringValue": source]
       ]
     ]
+
     request.httpBody = try? JSONSerialization.data(withJSONObject: body)
-    URLSession.shared.dataTask(with: request).resume()
+
+    URLSession.shared.dataTask(with: request) { _, _, _ in
+      UIApplication.shared.endBackgroundTask(bgTask)
+      bgTask = .invalid
+    }.resume()
   }
 }
