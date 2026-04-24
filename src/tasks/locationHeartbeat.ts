@@ -47,10 +47,52 @@ export async function writeHeartbeatNow(): Promise<void> {
 }
 
 // Continuous location task — runs permanently, rate-limited to one write per 10 minutes
+const MOVEMENT_DISTANCE_THRESHOLD = 30; // metres — above WiFi noise floor
+const MOVEMENT_SPEED_THRESHOLD = 0.3;   // m/s — very slow walking pace
+let lastKnownLat: number | null = null;
+let lastKnownLon: number | null = null;
+
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 TaskManager.defineTask(LOCATION_HEARTBEAT_TASK, async (body: any) => {
   if (body?.error) return;
-  await writeHeartbeat('continuous');
+
+  const locations = body?.data?.locations;
+  if (!locations || locations.length === 0) return;
+
+  const location = locations[0];
+  const { latitude, longitude, speed, accuracy } = location.coords;
+
+  // Ignore very poor accuracy fixes (likely indoor WiFi noise)
+  if (accuracy > 200) return;
+
+  // Check if person is genuinely moving
+  const isMovingBySpeed = speed !== null && speed > MOVEMENT_SPEED_THRESHOLD;
+
+  // Check distance from last known position
+  let isMovingByDistance = false;
+  if (lastKnownLat !== null && lastKnownLon !== null) {
+    const distance = haversineDistance(lastKnownLat, lastKnownLon, latitude, longitude);
+    isMovingByDistance = distance > MOVEMENT_DISTANCE_THRESHOLD;
+  } else {
+    // First fix — always write
+    isMovingByDistance = true;
+  }
+
+  if (isMovingBySpeed || isMovingByDistance) {
+    lastKnownLat = latitude;
+    lastKnownLon = longitude;
+    await writeHeartbeat('continuous');
+  }
 });
 
 export async function startContinuousLocation(): Promise<boolean> {
