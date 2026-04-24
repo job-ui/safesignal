@@ -6,10 +6,8 @@ import { UID_KEY, LAST_HEARTBEAT_KEY, recordHeartbeatTime, getLastHeartbeatTime 
 import { LOCATION_HEARTBEAT_TASK } from '../constants/tasks';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Two hours — if no heartbeat in this window, continuous location kicks in
-const CONTINUOUS_TRIGGER_MS = 2 * 60 * 60 * 1000;
-// Rate limit: never write more than once per 30 minutes from continuous location
-const MIN_WRITE_INTERVAL_MS = 30 * 60 * 1000;
+// Rate limit: never write more than once per 10 minutes from continuous location
+const MIN_WRITE_INTERVAL_MS = 10 * 60 * 1000;
 let lastWriteAt = 0;
 
 // Called by both continuous location task AND native Swift module
@@ -25,8 +23,6 @@ export async function writeHeartbeat(source: string = 'location'): Promise<void>
     { merge: true }
   );
   await recordHeartbeatTime();
-  // After writing heartbeat, stop continuous location — native monitors take over
-  await stopContinuousLocation();
 }
 
 // Bypasses the 30-min rate limit — for explicit foreground/launch writes
@@ -50,7 +46,7 @@ export async function writeHeartbeatNow(): Promise<void> {
   }
 }
 
-// Continuous location task — fallback only, stops itself after writing
+// Continuous location task — runs permanently, rate-limited to one write per 10 minutes
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 TaskManager.defineTask(LOCATION_HEARTBEAT_TASK, async (body: any) => {
   if (body?.error) return;
@@ -84,17 +80,11 @@ export async function stopContinuousLocation(): Promise<void> {
   } catch {}
 }
 
-// Called on app foreground and on login — starts continuous only if needed
+// Called on app foreground and on login — always starts continuous location
 export async function checkAndManageContinuous(): Promise<void> {
   const { status } = await Location.getBackgroundPermissionsAsync();
   if (status !== 'granted') return;
-  const lastHeartbeat = await getLastHeartbeatTime();
-  const twoHoursAgo = Date.now() - CONTINUOUS_TRIGGER_MS;
-  if (lastHeartbeat < twoHoursAgo) {
-    // No heartbeat in 2+ hours — start continuous location as fallback
-    await startContinuousLocation();
-  }
-  // If heartbeat is recent, continuous stays off — native monitors handle it
+  await startContinuousLocation();
 }
 
 export async function isLocationRunning(): Promise<boolean> {
