@@ -1,6 +1,8 @@
 import { initializeApp, getApps } from 'firebase/app';
 import {
   getAuth,
+  initializeAuth,
+  getReactNativePersistence,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
@@ -28,9 +30,14 @@ import { PlanTier } from '../types/enums';
 const UID_STORAGE_KEY = 'safesignal_uid';
 
 // Initialise Firebase app (guard against re-init in hot reload)
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const isFirstInit = getApps().length === 0;
+const app = isFirstInit ? initializeApp(firebaseConfig) : getApps()[0];
 
-export const auth = getAuth(app);
+export const auth = isFirstInit
+  ? initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    })
+  : getAuth(app);
 export const db = getFirestore(app);
 
 // Auth functions

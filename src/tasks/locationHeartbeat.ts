@@ -30,9 +30,13 @@ export async function writeHeartbeat(source: string = 'location'): Promise<void>
 }
 
 // Bypasses the 30-min rate limit — for explicit foreground/launch writes
+// But skips if a heartbeat was written very recently (e.g. by native monitoring)
 export async function writeHeartbeatNow(): Promise<void> {
   const uid = await AsyncStorage.getItem(UID_KEY);
   if (!uid) return;
+  // Don't overwrite a very recent heartbeat from native monitoring
+  const lastHeartbeat = await getLastHeartbeatTime();
+  if (Date.now() - lastHeartbeat < 5 * 60 * 1000) return; // skip if written in last 5 min
   try {
     await setDoc(
       doc(db, 'heartbeats', uid),
