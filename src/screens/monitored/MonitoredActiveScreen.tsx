@@ -44,6 +44,7 @@ export default function MonitoredActiveScreen() {
     Array<LocationRequestDocument & { id: string }>
   >([]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [monitorNames, setMonitorNames] = useState<Record<string, string>>({});
   const [locationPermission, setLocationPermission] = useState<LocationPermissionLevel | null>(null);
   const [requestingPermission, setRequestingPermission] = useState(false);
 
@@ -98,6 +99,17 @@ export default function MonitoredActiveScreen() {
     if (!currentUser?.uid) return;
     return subscribeMonitoredPairs(currentUser.uid, setPairs);
   }, [currentUser?.uid]);
+
+  useEffect(() => {
+    const activePairs = pairs.filter((p) => p.status === 'active');
+    activePairs.forEach(async (pair) => {
+      if (!pair.monitorId || monitorNames[pair.monitorId]) return;
+      const profile = await getUserProfile(pair.monitorId);
+      if (profile?.name) {
+        setMonitorNames((prev) => ({ ...prev, [pair.monitorId]: profile.name }));
+      }
+    });
+  }, [pairs]);
 
   // Subscribe to pending location requests directed at this user
   useEffect(() => {
@@ -351,7 +363,7 @@ export default function MonitoredActiveScreen() {
                   <Text style={styles.monitorEmoji}>{pair.contactEmoji ?? '👁️'}</Text>
                   <View style={styles.monitorInfo}>
                     <Text style={styles.monitorName}>
-                      {pair.monitorName ?? pair.contactName ?? pair.monitorId}
+                      {monitorNames[pair.monitorId] ?? pair.contactName ?? pair.monitorId}
                     </Text>
                     <View style={[styles.statusPill, isPaused && styles.statusPillPaused]}>
                       <Text style={[styles.statusPillText, isPaused && styles.statusPillTextPaused]}>
