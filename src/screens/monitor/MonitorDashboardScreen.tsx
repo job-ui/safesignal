@@ -34,7 +34,12 @@ export default function MonitorDashboardScreen() {
       setPairs(newPairs);
       setIsLoading(false);
       newPairs.forEach((pair) => {
-        if (!pair.monitoredId || heartbeatUnsubs.current[pair.monitoredId]) return;
+        if (!pair.monitoredId) return;
+        // Cancel existing subscription before resubscribing — prevents stale listeners on remount
+        if (heartbeatUnsubs.current[pair.monitoredId]) {
+          heartbeatUnsubs.current[pair.monitoredId]();
+          delete heartbeatUnsubs.current[pair.monitoredId];
+        }
         const hbUnsub = subscribeHeartbeat(pair.monitoredId, (hb) => {
           setHeartbeats((prev) => ({ ...prev, [pair.monitoredId]: hb }));
         });
