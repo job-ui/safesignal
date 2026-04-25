@@ -7,7 +7,7 @@ import { LOCATION_HEARTBEAT_TASK } from '../constants/tasks';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Rate limit: never write more than once per 10 minutes from continuous location
-const MIN_WRITE_INTERVAL_MS = 10 * 60 * 1000;
+const MIN_WRITE_INTERVAL_MS = 3 * 60 * 60 * 1000;
 let lastWriteAt = 0;
 
 // Called by both continuous location task AND native Swift module

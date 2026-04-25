@@ -351,7 +351,7 @@ export default function MonitoredActiveScreen() {
                   <Text style={styles.monitorEmoji}>{pair.contactEmoji ?? '👁️'}</Text>
                   <View style={styles.monitorInfo}>
                     <Text style={styles.monitorName}>
-                      {pair.contactName ?? pair.monitorId}
+                      {pair.monitorName ?? pair.contactName ?? pair.monitorId}
                     </Text>
                     <View style={[styles.statusPill, isPaused && styles.statusPillPaused]}>
                       <Text style={[styles.statusPillText, isPaused && styles.statusPillTextPaused]}>
