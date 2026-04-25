@@ -25,14 +25,19 @@ export default function MonitorDashboardScreen() {
   const [pairs, setPairs] = useState<Array<MonitoringPairDocument & { id: string }>>([]);
   const [heartbeats, setHeartbeats] = useState<Record<string, HeartbeatDocument | null>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [debugInfo, setDebugInfo] = useState<string>('initializing...');
   const heartbeatUnsubs = useRef<Record<string, () => void>>({});
 
   useEffect(() => {
     if (!currentUser?.uid) return;
+    console.log('[Dashboard] currentUser.uid:', currentUser?.uid);
+    setDebugInfo('uid: ' + currentUser?.uid?.substring(0, 8));
 
     const pairsUnsub = subscribeMonitoringPairs(currentUser.uid, (newPairs) => {
       setPairs(newPairs);
       setIsLoading(false);
+      console.log('[Dashboard] pairs received:', newPairs.length, newPairs.map(p => ({id: p.id, monitoredId: p.monitoredId, status: p.status})));
+      setDebugInfo('pairs: ' + newPairs.length + ' | monitored: ' + newPairs.map(p => p.monitoredId?.substring(0,6) ?? 'null').join(','));
       newPairs.forEach((pair) => {
         if (!pair.monitoredId) return;
         // Cancel existing subscription before resubscribing — prevents stale listeners on remount
@@ -41,6 +46,8 @@ export default function MonitorDashboardScreen() {
           delete heartbeatUnsubs.current[pair.monitoredId];
         }
         const hbUnsub = subscribeHeartbeat(pair.monitoredId, (hb) => {
+          console.log('[Dashboard] heartbeat received for:', pair.monitoredId, 'hb:', hb);
+          setDebugInfo(prev => prev + ' | hb:' + (hb ? hb.lastSeen?.toMillis() : 'null'));
           setHeartbeats((prev) => ({ ...prev, [pair.monitoredId]: hb }));
         });
         heartbeatUnsubs.current[pair.monitoredId] = hbUnsub;
@@ -102,6 +109,10 @@ export default function MonitorDashboardScreen() {
         <Text style={styles.title}>SafeSignal</Text>
         <View style={styles.headerSpacer} />
       </View>
+
+      <Text style={{fontSize: 10, color: '#999', paddingHorizontal: 16, paddingBottom: 4}}>
+        {debugInfo}
+      </Text>
 
       <View style={styles.summaryBar}>
         <View style={[styles.chip, styles.safeChip]}>
