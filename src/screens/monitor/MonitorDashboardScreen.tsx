@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  AppState,
   FlatList,
   StyleSheet,
   Text,
@@ -30,34 +31,53 @@ export default function MonitorDashboardScreen() {
 
   useEffect(() => {
     if (!currentUser?.uid) return;
-    console.log('[Dashboard] currentUser.uid:', currentUser?.uid);
-    setDebugInfo('uid: ' + currentUser?.uid?.substring(0, 8));
 
-    const pairsUnsub = subscribeMonitoringPairs(currentUser.uid, (newPairs) => {
-      setPairs(newPairs);
-      setIsLoading(false);
-      console.log('[Dashboard] pairs received:', newPairs.length, newPairs.map(p => ({id: p.id, monitoredId: p.monitoredId, status: p.status})));
-      setDebugInfo('pairs: ' + newPairs.length + ' | monitored: ' + newPairs.map(p => p.monitoredId?.substring(0,6) ?? 'null').join(','));
-      newPairs.forEach((pair) => {
-        if (!pair.monitoredId) return;
-        // Cancel existing subscription before resubscribing — prevents stale listeners on remount
-        if (heartbeatUnsubs.current[pair.monitoredId]) {
-          heartbeatUnsubs.current[pair.monitoredId]();
-          delete heartbeatUnsubs.current[pair.monitoredId];
-        }
-        const hbUnsub = subscribeHeartbeat(pair.monitoredId, (hb) => {
-          console.log('[Dashboard] heartbeat received for:', pair.monitoredId, 'hb:', hb);
-          setDebugInfo(prev => prev + ' | hb:' + (hb ? hb.lastSeen?.toMillis() : 'null'));
-          setHeartbeats((prev) => ({ ...prev, [pair.monitoredId]: hb }));
+    let pairsUnsub: (() => void) | null = null;
+
+    const start = () => {
+      if (pairsUnsub) return;
+      setDebugInfo('uid: ' + currentUser?.uid?.substring(0, 8));
+      pairsUnsub = subscribeMonitoringPairs(currentUser.uid, (newPairs) => {
+        setPairs(newPairs);
+        setIsLoading(false);
+        setDebugInfo('pairs: ' + newPairs.length + ' | monitored: ' + newPairs.map(p => p.monitoredId?.substring(0,6) ?? 'null').join(','));
+        newPairs.forEach((pair) => {
+          if (!pair.monitoredId) return;
+          if (heartbeatUnsubs.current[pair.monitoredId]) {
+            heartbeatUnsubs.current[pair.monitoredId]();
+            delete heartbeatUnsubs.current[pair.monitoredId];
+          }
+          const hbUnsub = subscribeHeartbeat(pair.monitoredId, (hb) => {
+            setDebugInfo(prev => prev + ' | hb:' + (hb ? hb.lastSeen?.toMillis() : 'null'));
+            setHeartbeats((prev) => ({ ...prev, [pair.monitoredId]: hb }));
+          });
+          heartbeatUnsubs.current[pair.monitoredId] = hbUnsub;
         });
-        heartbeatUnsubs.current[pair.monitoredId] = hbUnsub;
       });
+    };
+
+    const stop = () => {
+      if (pairsUnsub) {
+        pairsUnsub();
+        pairsUnsub = null;
+      }
+      Object.values(heartbeatUnsubs.current).forEach((u) => u());
+      heartbeatUnsubs.current = {};
+    };
+
+    start();
+
+    const appStateSub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        start();
+      } else {
+        stop();
+      }
     });
 
     return () => {
-      pairsUnsub();
-      Object.values(heartbeatUnsubs.current).forEach((u) => u());
-      heartbeatUnsubs.current = {};
+      stop();
+      appStateSub.remove();
     };
   }, [currentUser?.uid]);
 
