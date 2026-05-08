@@ -9,6 +9,7 @@ export interface UserDocument {
   fcmToken: string | null;
   subscriptionTier: 'free' | 'family' | 'pro';
   createdAt: Timestamp;
+  timezone?: string;
 }
 
 // 2. monitoring_pairs/{id}

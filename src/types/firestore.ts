@@ -8,6 +8,7 @@ export interface UserDocument {
   fcmToken: string | null;
   subscriptionTier: PlanTier;
   createdAt: Timestamp;
+  timezone?: string;
 }
 
 // 2. monitoring_pairs/{id}

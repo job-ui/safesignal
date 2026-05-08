@@ -47,6 +47,29 @@ export const inactivityChecker = functions
         return;
       }
 
+      // Get monitor's local hour using their timezone
+      const timezone = monitor.timezone ?? 'UTC';
+      const localHour = parseInt(
+        new Date().toLocaleString('en-US', { timeZone: timezone, hour: 'numeric', hour12: false })
+      );
+
+      // Quiet hours: no notifications between 11pm and 7am local time
+      if (localHour >= 23 || localHour < 7) return;
+
+      // 7am reset: if it's between 7:00-7:14am local time, clear sentAlertAt so
+      // the threshold starts counting fresh from this morning
+      if (localHour === 7) {
+        if (sentAlertAt) {
+          const sentDate = new Date(sentAlertAt.toMillis());
+          const sentLocalDay = sentDate.toLocaleDateString('en-US', { timeZone: timezone });
+          const todayLocal = new Date().toLocaleDateString('en-US', { timeZone: timezone });
+          if (sentLocalDay !== todayLocal) {
+            await pairDoc.ref.update({ sentAlertAt: null });
+            return; // Skip this run, will check again in 15 min
+          }
+        }
+      }
+
       const name = contactName ?? 'Your contact';
       const hoursRounded = Math.round(hoursAgo);
 

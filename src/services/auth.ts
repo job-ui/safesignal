@@ -57,6 +57,7 @@ export async function signUpWithEmail(
     fcmToken: null,
     subscriptionTier: PlanTier.Free,
     createdAt: serverTimestamp(),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   });
 
   // Link any pending monitoring pairs that were sent to this email before the user joined.
@@ -94,6 +95,9 @@ export function onAuthStateChanged(callback: NextOrObserver<User>): () => void {
     if (user) {
       await AsyncStorage.setItem(UID_STORAGE_KEY, user.uid);
       storeUidNative(user.uid);
+      await updateDoc(doc(db, 'users', user.uid), {
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      }).catch(() => {});
     }
     if (typeof callback === 'function') callback(user);
   });
