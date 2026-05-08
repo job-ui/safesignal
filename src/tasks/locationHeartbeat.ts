@@ -49,8 +49,8 @@ export async function writeHeartbeatNow(): Promise<void> {
 // Continuous location task — runs permanently, rate-limited to one write per 10 minutes
 const MOVEMENT_DISTANCE_THRESHOLD = 30; // metres — above WiFi noise floor
 const MOVEMENT_SPEED_THRESHOLD = 0.3;   // m/s — very slow walking pace
-let lastKnownLat: number | null = null;
-let lastKnownLon: number | null = null;
+const LAST_LAT_KEY = 'safesignal_last_lat';
+const LAST_LON_KEY = 'safesignal_last_lon';
 
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000;
@@ -65,33 +65,41 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 TaskManager.defineTask(LOCATION_HEARTBEAT_TASK, async (body: any) => {
   if (body?.error) return;
-
   const locations = body?.data?.locations;
   if (!locations || locations.length === 0) return;
-
   const location = locations[0];
   const { latitude, longitude, speed, accuracy } = location.coords;
 
   // Ignore very poor accuracy fixes (likely indoor WiFi noise)
   if (accuracy > 200) return;
 
-  // Check if person is genuinely moving
+  // Check if person is genuinely moving by speed
   const isMovingBySpeed = speed !== null && speed > MOVEMENT_SPEED_THRESHOLD;
 
-  // Check distance from last known position
+  // Check distance from last known position — read from AsyncStorage so it
+  // persists across app relaunches and prevents false positives when app restarts
   let isMovingByDistance = false;
-  if (lastKnownLat !== null && lastKnownLon !== null) {
-    const distance = haversineDistance(lastKnownLat, lastKnownLon, latitude, longitude);
+  const savedLat = await AsyncStorage.getItem(LAST_LAT_KEY);
+  const savedLon = await AsyncStorage.getItem(LAST_LON_KEY);
+
+  if (savedLat !== null && savedLon !== null) {
+    const distance = haversineDistance(
+      parseFloat(savedLat), parseFloat(savedLon),
+      latitude, longitude
+    );
     isMovingByDistance = distance > MOVEMENT_DISTANCE_THRESHOLD;
-  } else {
-    // First fix — always write
-    isMovingByDistance = true;
   }
+  // Note: if no saved position exists, we do NOT write — we just save the position
+  // This prevents the false positive on first launch after install
 
   if (isMovingBySpeed || isMovingByDistance) {
-    lastKnownLat = latitude;
-    lastKnownLon = longitude;
+    await AsyncStorage.setItem(LAST_LAT_KEY, latitude.toString());
+    await AsyncStorage.setItem(LAST_LON_KEY, longitude.toString());
     await writeHeartbeat('continuous');
+  } else if (savedLat === null) {
+    // No saved position yet — just save current position, don't write heartbeat
+    await AsyncStorage.setItem(LAST_LAT_KEY, latitude.toString());
+    await AsyncStorage.setItem(LAST_LON_KEY, longitude.toString());
   }
 });
 
