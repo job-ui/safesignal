@@ -1,6 +1,5 @@
 import * as functions from 'firebase-functions/v1';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { getMessaging } from 'firebase-admin/messaging';
 import type { MonitoringPairDocument, HeartbeatDocument, UserDocument } from './types';
 
 export const inactivityChecker = functions
@@ -74,19 +73,29 @@ export const inactivityChecker = functions
       const hoursRounded = Math.round(hoursAgo);
 
       try {
-        await getMessaging().send({
-          token: monitor.fcmToken,
-          notification: {
-          title: `${name} has been inactive for ${hoursRounded} hour${hoursRounded !== 1 ? 's' : ''}`,
-            body: 'Tap to check in or send a location request',
+        const response = await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
           },
-          data: { type: 'inactivity', pairId: pairDoc.id },
+          body: JSON.stringify({
+            to: monitor.fcmToken,
+            title: `${name} has been inactive for ${hoursRounded} hour${hoursRounded !== 1 ? 's' : ''}`,
+            body: 'Tap to check in or send a location request',
+            data: { type: 'inactivity', pairId: pairDoc.id },
+            sound: 'default',
+            priority: 'high',
+          }),
         });
+
+        const result = await response.json();
+        functions.logger.info(`Expo push result for pair ${pairDoc.id}:`, JSON.stringify(result));
 
         await pairDoc.ref.update({ sentAlertAt: FieldValue.serverTimestamp() });
         functions.logger.info(`Inactivity alert sent for pair ${pairDoc.id} (${hoursRounded}h)`);
       } catch (err) {
-        functions.logger.error(`Failed to send inactivity FCM for pair ${pairDoc.id}:`, err);
+        functions.logger.error(`Failed to send push for pair ${pairDoc.id}:`, err);
       }
     });
 
